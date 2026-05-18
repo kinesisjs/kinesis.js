@@ -1,0 +1,54 @@
+{
+  "name": "@kinesisjs/core",
+  "version": "0.1.0",
+  "description": "TypeScript-first, framework-agnostic vehicle interpolation engine — core",
+  "license": "MIT",
+  "author": "Muzaffer Aşkar",
+  "homepage": "https://github.com/kinesisjs/kinesis.js/tree/main/packages/core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kinesisjs/kinesis.js.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/kinesisjs/kinesis.js/issues"
+  },
+  "keywords": [
+    "fleet-tracking",
+    "vehicle-tracking",
+    "interpolation",
+    "real-time",
+    "websocket",
+    "openlayers",
+    "leaflet",
+    "maps",
+    "gis",
+    "typescript"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run --root ../..",
+    "typecheck": "tsc --noEmit"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
