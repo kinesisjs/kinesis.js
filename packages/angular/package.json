@@ -1,0 +1,64 @@
+{
+  "name": "@kinesisjs/angular",
+  "version": "0.1.0",
+  "description": "Angular Signals / RxJS wrapper for Kinesis.js",
+  "license": "MIT",
+  "author": "Muzaffer Aşkar",
+  "homepage": "https://github.com/kinesisjs/kinesis.js/tree/main/packages/angular#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kinesisjs/kinesis.js.git",
+    "directory": "packages/angular"
+  },
+  "bugs": {
+    "url": "https://github.com/kinesisjs/kinesis.js/issues"
+  },
+  "keywords": [
+    "angular",
+    "signals",
+    "rxjs",
+    "fleet-tracking",
+    "vehicle-tracking",
+    "interpolation",
+    "openlayers",
+    "real-time",
+    "maps",
+    "kinesisjs"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run --root ../..",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kinesisjs/core": "workspace:*",
+    "@kinesisjs/openlayers": "workspace:*"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=17.0.0",
+    "@angular/core": ">=17.0.0",
+    "ol": ">=8.0.0",
+    "rxjs": ">=7.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
