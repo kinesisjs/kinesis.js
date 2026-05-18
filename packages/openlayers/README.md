@@ -1,0 +1,84 @@
+# @kinesisjs/openlayers
+
+> OpenLayers map adapter for Kinesis.js.
+
+[![npm](https://img.shields.io/npm/v/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers)
+[![Changelog](https://img.shields.io/badge/changelog-keep%20a%20changelog-blue)](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![OpenLayers](https://img.shields.io/badge/peer-ol%20%E2%89%A58-3eaaaf.svg)](https://openlayers.org/)
+
+OpenLayers feature lifecycle and styling layer on top of `@kinesisjs/core`.
+
+## Scope
+
+- `Feature<Point>` create / update / delete per vehicle
+- Vector layer and source management (creates a new layer or attaches to an existing one)
+- **`managedFeatureIds`** — co-exists with non-vehicle features (geofences, custom markers) in a shared layer
+- Static or dynamic styling — `(vehicle, id) => Style` factory
+- **`updateOpacity`** — fade-behaviour support (used by the tracker's fade animation)
+- **`getMemoryEstimate`** — feeds `Tracker.getStats().memoryBreakdown`
+- Heading / speed property propagation (for rotation, colour bands)
+- `EPSG:3857` by default; custom projections supported
+
+## Installation
+
+```bash
+pnpm add @kinesisjs/core @kinesisjs/openlayers ol
+```
+
+`ol` is a **peer dependency** — your project controls the OpenLayers version (`>=8.0.0` recommended).
+
+## Usage
+
+```ts
+import Map from 'ol/Map';
+import View from 'ol/View';
+import { Tracker } from '@kinesisjs/core';
+import { OpenLayersAdapter, createVehicleStyle } from '@kinesisjs/openlayers';
+
+const map = new Map({ target: 'map', view: new View({ center: [0, 0], zoom: 10 }) });
+
+const adapter = new OpenLayersAdapter(map, {
+  style: createVehicleStyle({
+    icon: '/car.png',
+    iconScale: 0.7,
+  }),
+  // Speed-based colouring:
+  // style: createVehicleStyle({
+  //   speedColorBands: [
+  //     { max: 30, color: '#22c55e' },
+  //     { max: 80, color: '#eab308' },
+  //     { max: 130, color: '#ef4444' },
+  //   ],
+  // }),
+});
+
+const tracker = new Tracker({ adapter, interpolation: 'adaptive' });
+tracker.start();
+```
+
+### Co-existing with non-vehicle features
+
+When an existing `VectorLayer` already holds geofences, custom markers, or other features, pass it as `existingLayer` and scope the adapter to a managed ID set so it never touches anything else:
+
+```ts
+const adapter = new OpenLayersAdapter(map, {
+  existingLayer: sharedLayer,
+  managedFeatureIds: vehicleIds, // only these are managed
+});
+
+// Update the managed set at runtime:
+adapter.setManagedIds(newVehicleIds);
+```
+
+## Public API
+
+```ts
+export { OpenLayersAdapter, createVehicleStyle, colorForSpeed };
+
+export type { OpenLayersAdapterOptions, VehicleStyleOptions, VehicleStyleProvider, SpeedColorBand };
+```
+
+## License
+
+[MIT](./LICENSE)
