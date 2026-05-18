@@ -1,0 +1,74 @@
+{
+  "name": "kinesisjs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Kinesis.js monorepo — TypeScript-first, framework-agnostic vehicle interpolation engine",
+  "license": "MIT",
+  "author": "Muzaffer Aşkar",
+  "homepage": "https://github.com/kinesisjs/kinesis.js#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kinesisjs/kinesis.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kinesisjs/kinesis.js/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "build": "pnpm -r --filter \"./packages/*\" build",
+    "dev": "pnpm -r --filter \"./packages/*\" --parallel dev",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:bench": "vitest bench --run",
+    "typecheck": "pnpm -r --filter \"./packages/*\" typecheck",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "clean": "pnpm -r exec rimraf dist node_modules coverage",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@angular/common": "^19",
+    "@angular/compiler": "^19",
+    "@angular/core": "^19",
+    "@angular/platform-browser": "^19",
+    "@angular/platform-browser-dynamic": "^19",
+    "@changesets/changelog-github": "^0.7.0",
+    "@changesets/cli": "^2.31.0",
+    "@eslint/js": "^9.17.0",
+    "@swc/core": "^1.15.33",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^22.10.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "jsdom": "^29.1.1",
+    "ol": "^10.9.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "rxjs": "^7.8",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8",
+    "zone.js": "^0.15"
+  },
+  "pnpm": {
+    "overrides": {
+      "@angular/core": "^19",
+      "@angular/common": "^19",
+      "@angular/compiler": "^19",
+      "@angular/platform-browser": "^19",
+      "@angular/platform-browser-dynamic": "^19"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Default: normalize line endings to LF on commit, leave working tree to OS convention
+* text=auto eol=lf
+
+# Force LF for source files (cross-platform consistency)
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+
+# Lockfiles — let pnpm manage formatting, ignore for diff
+pnpm-lock.yaml -diff merge=binary linguist-generated=true

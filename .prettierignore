@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+coverage
+.nx
+.turbo
+.cache
+.vite
+pnpm-lock.yaml
+*.min.js
+*.min.css
+
+# Long-form user-authored docs — preserve author's formatting
+PRD.md
+ARGE_SUNUM.md
+
