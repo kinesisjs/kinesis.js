@@ -18,7 +18,7 @@ interface ResolvedTrailOptions {
   opacity: number;
   color?: string;
   defaultColor: string;
-  zIndex: number;
+  zIndex?: number;
 }
 
 interface TrailEntry {
@@ -65,6 +65,25 @@ export class OpenLayersAdapter implements TrackAdapter {
       this.managedIds = new Set(options.managedFeatureIds);
     }
 
+    // Trail layer is added FIRST (before the vehicle layer below) so OpenLayers'
+    // natural render order — later-added layers paint on top of earlier ones —
+    // places trails under their vehicles without any zIndex juggling. Users in
+    // existingLayer mode (where their own vehicle layer is already in the map)
+    // can still override `zIndex` to place the trail at a specific position.
+    if (options.trail?.enabled) {
+      const opts = resolveTrailOptions(options.trail);
+      const source = new VectorSource();
+      const layer = new VectorLayer({
+        source,
+        properties: { name: 'kinesis-trails' },
+        ...(opts.zIndex !== undefined ? { zIndex: opts.zIndex } : {}),
+      });
+      this.map.addLayer(layer);
+      this.trail = { opts, source, layer, entries: new Map() };
+    } else {
+      this.trail = null;
+    }
+
     if (options.existingLayer) {
       this.layer = options.existingLayer;
       const existingSource = options.existingLayer.getSource();
@@ -81,20 +100,6 @@ export class OpenLayersAdapter implements TrackAdapter {
       });
       this.map.addLayer(this.layer);
       this.ownedLayer = true;
-    }
-
-    if (options.trail?.enabled) {
-      const opts = resolveTrailOptions(options.trail);
-      const source = new VectorSource();
-      const layer = new VectorLayer({
-        source,
-        properties: { name: 'kinesis-trails' },
-        zIndex: opts.zIndex,
-      });
-      this.map.addLayer(layer);
-      this.trail = { opts, source, layer, entries: new Map() };
-    } else {
-      this.trail = null;
     }
   }
 
@@ -326,7 +331,7 @@ function resolveTrailOptions(opts: TrailRenderOptions): ResolvedTrailOptions {
     opacity: opts.opacity ?? 0.5,
     color: opts.color,
     defaultColor: opts.defaultColor ?? '#3b82f6',
-    zIndex: opts.zIndex ?? -1,
+    zIndex: opts.zIndex, // undefined by default: natural OL ordering (trail behind vehicles)
   };
 }
 

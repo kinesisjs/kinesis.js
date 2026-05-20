@@ -251,8 +251,24 @@ describe('OpenLayersAdapter — trail rendering', () => {
     new OpenLayersAdapter(map, { trail: { enabled: true } });
     const layer = trailLayerOf(map);
     expect(layer).toBeDefined();
-    // Default zIndex is -1 so the trail draws below the vehicle layer.
-    expect(layer?.getZIndex()).toBe(-1);
+    // Default zIndex is undefined — natural OL ordering handles trail-vs-vehicle.
+    expect(layer?.getZIndex()).toBeUndefined();
+  });
+
+  it('adds the trail layer BEFORE the vehicle layer (trail renders below)', () => {
+    const map = makeMap();
+    new OpenLayersAdapter(map, { trail: { enabled: true } });
+    const layers = (map as unknown as FakeMap).layers;
+    const trailIdx = layers.findIndex((l) => l.get('name') === 'kinesis-trails');
+    const vehicleIdx = layers.findIndex((l) => l.get('name') === 'kinesis-vehicles');
+    expect(trailIdx).toBeGreaterThanOrEqual(0);
+    expect(vehicleIdx).toBeGreaterThan(trailIdx);
+  });
+
+  it('honors explicit trail.zIndex when provided (existingLayer override)', () => {
+    const map = makeMap();
+    new OpenLayersAdapter(map, { trail: { enabled: true, zIndex: 5 } });
+    expect(trailLayerOf(map)?.getZIndex()).toBe(5);
   });
 
   it('addVehicle seeds the trail with a single coordinate', () => {

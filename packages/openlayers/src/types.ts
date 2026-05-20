@@ -88,7 +88,17 @@ export interface TrailRenderOptions {
   color?: string;
   /** `color` ve `meta.color` yokken kullanılan fallback. Default: '#3b82f6'. */
   defaultColor?: string;
-  /** Trail layer z-index. Negatif değer marker'ların altına alır. Default: -1. */
+  /**
+   * Trail layer z-index — advanced override for `existingLayer` mode.
+   *
+   * Default: undefined. With default, the trail layer is added to the map BEFORE
+   * the adapter's vehicle layer; OpenLayers' natural order (later-added on top)
+   * places trails behind vehicles without explicit zIndex juggling.
+   *
+   * Set explicitly only when the trail must sit at a specific z relative to other
+   * user-managed layers (e.g. behind a custom heatmap, above a base tile in
+   * `existingLayer` mode where the trail-vs-vehicle add order alone doesn't reach).
+   */
   zIndex?: number;
 }
 
