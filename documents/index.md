@@ -76,4 +76,6 @@ Kinesis.js fills that gap narrowly and deeply. The library is honest about [wher
 
 ## Status
 
-**v0.1.0** — Initial public release. Roadmap detail on [GitHub](https://github.com/kinesisjs/kinesis.js).
+**v0.1.2** — current. Real-time interpolation (`renderLagMs`), `ng-packagr` Angular build, lowered adaptive `minPeriodMs` default, and four new directive `@Input`s. See the [migration notes](/guide/migration) if you're coming from 0.1.0.
+
+Roadmap detail on [GitHub](https://github.com/kinesisjs/kinesis.js).

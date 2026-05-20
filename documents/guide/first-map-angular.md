@@ -87,6 +87,31 @@ Pass it to the directive:
 <div kinesisMap [positions]="positions" [vehicleStyle]="style"></div>
 ```
 
+## Advanced inputs
+
+The directive accepts the full tracker option surface as optional `@Input`s — useful when the defaults don't match your feed:
+
+```html
+<div
+  kinesisMap
+  [positions]="positions"
+  [interpolation]="'adaptive'"
+  [renderLagMs]="800"
+  [adaptive]="{ minPeriodMs: 200, fadeThresholdMs: 30000 }"
+  [fadeAnimation]="{ duration: 400, easing: 'linear' }"
+  [initialPositionBehavior]="'fade-in'"
+></div>
+```
+
+| Input | Type | Default | Purpose |
+| --- | --- | --- | --- |
+| `renderLagMs` | `number` | `1000` | Real-time interpolation buffer. Set `0` for snap-on-ingest. |
+| `adaptive` | `AdaptiveOptions` | `{}` | Adaptive zone thresholds. Only consulted when `interpolation` is `'adaptive'`. |
+| `fadeAnimation` | `FadeAnimationOptions` | `{ duration: 800, easing: 'ease-in-out' }` | Used in the adaptive `fade` zone. |
+| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'` | `'show-immediately'` | First-ingest UX for new vehicles. |
+
+See [Interpolation](/concepts/interpolation) for a deeper explanation of each knob.
+
 ## Accessing the tracker
 
 Use a template reference variable or `@ViewChild` to reach the directive instance and the underlying tracker:

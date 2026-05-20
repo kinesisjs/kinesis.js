@@ -29,8 +29,12 @@ export default defineConfig({
       { text: 'Concepts', link: '/concepts/architecture' },
       { text: 'Performance', link: '/benchmarks' },
       {
-        text: 'v0.1.0',
+        text: 'v0.1.2',
         items: [
+          {
+            text: 'Migration notes',
+            link: '/guide/migration',
+          },
           {
             text: 'Changelog',
             link: 'https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md',
@@ -54,12 +58,17 @@ export default defineConfig({
             { text: 'First map (Vanilla TS)', link: '/guide/first-map-vanilla' },
           ],
         },
+        {
+          text: 'Reference',
+          items: [{ text: 'Migration', link: '/guide/migration' }],
+        },
       ],
       '/concepts/': [
         {
           text: 'Concepts',
           items: [
             { text: 'Architecture', link: '/concepts/architecture' },
+            { text: 'Interpolation', link: '/concepts/interpolation' },
             { text: 'Limitations', link: '/concepts/limitations' },
           ],
         },
