@@ -53,5 +53,9 @@ jobs:
           title: 'chore(release): version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # No NPM_TOKEN here — Trusted Publishing on npm (per-package, see
+          # documents/design/release-runbook.md §9) + `id-token: write` above
+          # mints a short-lived OIDC token at publish time. The legacy
+          # NPM_TOKEN repo secret can be removed once all 3 packages have
+          # their Trusted Publisher configured.
           NPM_CONFIG_PROVENANCE: true
