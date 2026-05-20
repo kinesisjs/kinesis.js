@@ -1,5 +1,27 @@
 # @kinesisjs/angular
 
+## 0.2.0
+
+### Minor Changes
+
+- [`3c697f6`](https://github.com/kinesisjs/kinesis.js/commit/3c697f652750f12fb55acef20792fef8f9fcb97e) Thanks [@Mu-As](https://github.com/Mu-As)! - `KinesisMapDirective` now exposes the new `trail` adapter option as an optional `@Input`.
+
+  ```html
+  <div
+    kinesisMap
+    [positions]="positions"
+    [trail]="{ enabled: true, maxPoints: 60, intervalMs: 100, color: '#3b82f6' }"
+  ></div>
+  ```
+
+  Omit the input and the directive behaves identically to v0.1.2 (no trail layer created). See `@kinesisjs/openlayers` `TrailRenderOptions` for the full option surface.
+
+### Patch Changes
+
+- Updated dependencies [[`22cbc42`](https://github.com/kinesisjs/kinesis.js/commit/22cbc4258a81403e35f29254793ffca520059701), [`0ddb2b6`](https://github.com/kinesisjs/kinesis.js/commit/0ddb2b6380ecd574cfc37608f68a43db0d228f7a), [`bf6f455`](https://github.com/kinesisjs/kinesis.js/commit/bf6f45559eb0d34d666dcd5b30034f00cf41a448)]:
+  - @kinesisjs/core@0.2.0
+  - @kinesisjs/openlayers@0.2.0
+
 ## 0.1.2
 
 ### Patch Changes
