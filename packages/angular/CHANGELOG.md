@@ -1,5 +1,24 @@
 # @kinesisjs/angular
 
+## 0.2.1
+
+### Patch Changes
+
+- [`a2e436a`](https://github.com/kinesisjs/kinesis.js/commit/a2e436a57dbd27981624461ec64f2d90e6a3c317) Thanks [@Mu-As](https://github.com/Mu-As)! - `KinesisMapDirective` now exposes the `warningOpacity` adapter option as an
+  optional `@Input`, completing the v0.2.0 gap-visualization story for directive
+  users (previously reachable only via the `kinesisTracker` factory).
+
+  ```html
+  <div kinesisMap [positions]="positions" [warningThreshold]="60000" [warningOpacity]="0.5"></div>
+  ```
+
+  Marker dims to 50% when a vehicle's idle exceeds `warningThreshold`; restores to
+  1.0 on the next ingest or sweeper-detected recovery. Omit the input to keep the
+  v0.2.0 behavior (no opacity change on warning).
+
+- Updated dependencies [[`aa2ea81`](https://github.com/kinesisjs/kinesis.js/commit/aa2ea8143a724f03db310636ef48658b54a36095)]:
+  - @kinesisjs/openlayers@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

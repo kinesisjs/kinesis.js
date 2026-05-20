@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/angular",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Angular Signals / RxJS wrapper for Kinesis.js",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
