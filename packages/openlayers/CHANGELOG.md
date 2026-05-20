@@ -1,5 +1,12 @@
 # @kinesisjs/openlayers
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [[`946aeeb`](https://github.com/kinesisjs/kinesis.js/commit/946aeebee1c64daa69acb450a0c375baef06d478)]:
+  - @kinesisjs/core@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
