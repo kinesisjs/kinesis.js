@@ -5,10 +5,15 @@ import type { AdaptiveBehavior, AdaptiveOptions, TrailPoint } from './types';
  * Periyot-bilinçli karar motoru. Her tick'te `to.receivedAt - from.receivedAt`
  * periyodu hesaplanır ve 4 zon arasından biri seçilir:
  *
- *   periyot < minPeriodMs            → 'none'
- *   minPeriodMs ≤ periyot ≤ maxPeriodMs → 'linear'
- *   maxPeriodMs < periyot ≤ fadeThresholdMs → 'fade'
- *   periyot > snapThresholdMs        → 'snap'
+ *   periyot < minPeriodMs            → 'none'   (default min: 500 ms)
+ *   minPeriodMs ≤ periyot ≤ maxPeriodMs → 'linear'  (default max: 8000 ms)
+ *   maxPeriodMs < periyot ≤ fadeThresholdMs → 'fade'    (default fade: 15000 ms)
+ *   periyot > snapThresholdMs        → 'snap'   (default snap: 15000 ms)
+ *
+ * `minPeriodMs` 1000 → 500 değişikliği v0.1.2'de yapıldı: yaygın 1 Hz GPS
+ * feed'lerin jitter'la 1000 ms boundary'sinin altına düşüp 'none' zone'una
+ * teleport olması engellendi. Sub-saniyelik feed kullananlar 'none'
+ * davranışını opt-in `minPeriodMs: 100` (vb.) ile geri alabilir.
  *
  * `compute()` matematiksel pozisyonu döner; **fade animasyonunun kendisi**
  * (opacity 1→0, snap, 0→1) Tracker tarafında sürülür (adapter.updateOpacity üzerinden).
@@ -21,7 +26,7 @@ export class AdaptiveInterpolator {
 
   /** Verilen periyot için davranış zonu. */
   classify(periodMs: number): AdaptiveBehavior {
-    const min = this.opts.minPeriodMs ?? 1000;
+    const min = this.opts.minPeriodMs ?? 500;
     const max = this.opts.maxPeriodMs ?? 8000;
     const fade = this.opts.fadeThresholdMs ?? 15000;
     const snap = this.opts.snapThresholdMs ?? 15000;
