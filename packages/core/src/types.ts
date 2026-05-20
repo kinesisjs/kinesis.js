@@ -217,6 +217,17 @@ export interface TrackAdapter {
   /** Opsiyonel: opacity (0..1) güncelle. Fade behavior için. */
   updateOpacity?(id: string, opacity: number): void;
 
+  /**
+   * Opsiyonel: vehicle lifecycle state değiştiğinde çağrılır
+   * (active ↔ warning, → stale → removeVehicle, → completed → removeVehicle).
+   *
+   * Adapter'lar bu hook'u kullanıp gap visualization yapabilir — örn. warning
+   * state'de marker'ı soluklaştırma, recovery'de eski opacity'ye dönme.
+   * `stale` ve `completed` hemen ardından `removeVehicle` ile takip edilir;
+   * bu state'leri rendering tarafında handle etmek zorunlu değil.
+   */
+  setVehicleState?(id: string, state: VehicleState): void;
+
   /** Opsiyonel: adapter tarafındaki bellek tahmini (bytes). */
   getMemoryEstimate?(): number;
 }

@@ -7,6 +7,7 @@ class MockAdapter implements TrackAdapter {
   readonly updated: Map<string, TrailPoint> = new Map();
   readonly removed: Set<string> = new Set();
   opacityCalls: Array<{ id: string; opacity: number }> = [];
+  stateCalls: Array<{ id: string; state: string }> = [];
   shouldThrowOnAdd = false;
   shouldThrowOnUpdate = false;
 
@@ -24,6 +25,9 @@ class MockAdapter implements TrackAdapter {
   destroy = vi.fn();
   updateOpacity = vi.fn((id: string, opacity: number) => {
     this.opacityCalls.push({ id, opacity });
+  });
+  setVehicleState = vi.fn((id: string, state: string) => {
+    this.stateCalls.push({ id, state });
   });
   getMemoryEstimate = vi.fn(() => 128);
 }
@@ -251,6 +255,80 @@ describe('Tracker with CustomInterpolator', () => {
     // First tick: linear fallback used; updatePosition called nonetheless
     expect(adapter.updatePosition).toHaveBeenCalled();
     vi.useRealTimers();
+  });
+});
+
+describe('Tracker → adapter.setVehicleState (gap visualization hook)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('sweeper warning transition fires setVehicleState(id, "warning")', () => {
+    vi.useFakeTimers({ now: 0 });
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      warningThreshold: 100,
+      staleThreshold: 5000,
+      staleCheckInterval: 50,
+    });
+    t.ingest([validPos('v1')]); // lastIngestAt = 0
+    t.start(); // starts sweeper interval
+
+    // advanceTimersByTime steps through sweep fires gradually so each sees the
+    // intermediate Date.now() — setSystemTime would jump past the warning
+    // window straight into stale.
+    vi.advanceTimersByTime(150);
+
+    expect(adapter.setVehicleState).toHaveBeenCalledWith('v1', 'warning');
+    t.destroy();
+  });
+
+  it('fresh ingest after warning fires setVehicleState(id, "active") immediately', () => {
+    vi.useFakeTimers({ now: 0 });
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      warningThreshold: 100,
+      staleThreshold: 5000,
+      staleCheckInterval: 50,
+    });
+    t.ingest([validPos('v1')]);
+    t.start();
+
+    vi.advanceTimersByTime(150);
+    expect(adapter.setVehicleState).toHaveBeenLastCalledWith('v1', 'warning');
+
+    // Fresh ingest now — recovery
+    adapter.setVehicleState.mockClear();
+    t.ingest([validPos('v1', 29.001)]);
+    expect(adapter.setVehicleState).toHaveBeenCalledWith('v1', 'active');
+    t.destroy();
+  });
+
+  it('stale transition does NOT call setVehicleState (removeVehicle follows)', () => {
+    vi.useFakeTimers({ now: 0 });
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      warningThreshold: 100,
+      staleThreshold: 200,
+      staleCheckInterval: 50,
+    });
+    t.ingest([validPos('v1')]);
+    t.start();
+
+    vi.advanceTimersByTime(300);
+
+    expect(adapter.removeVehicle).toHaveBeenCalledWith('v1');
+    // Only 'warning' should appear in stateCalls — never 'stale'
+    const states = adapter.stateCalls.map((c) => c.state);
+    expect(states).not.toContain('stale');
+    expect(states).toContain('warning');
+    t.destroy();
   });
 });
 

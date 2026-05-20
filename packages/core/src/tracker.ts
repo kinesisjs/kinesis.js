@@ -107,7 +107,13 @@ export class Tracker {
       existing.previous = existing.current;
       existing.current = this.toTrailPoint(pos, now);
       existing.lastIngestAt = now;
-      if (existing.state !== 'active') existing.state = 'active';
+      if (existing.state !== 'active') {
+        existing.state = 'active';
+        // Recovery from warning via fresh ingest; notify adapter immediately
+        // so any gap-visual treatment (dim, badge) clears without waiting for
+        // the next sweep tick.
+        this.options.adapter.setVehicleState?.(pos.id, 'active');
+      }
 
       const ci = this.asCustom();
       if (ci?.prepare && existing.previous) {
@@ -487,6 +493,7 @@ export class Tracker {
 
     switch (result.state) {
       case 'warning':
+        this.options.adapter.setVehicleState?.(result.vehicleId, 'warning');
         this.events.emit('vehiclewarning', {
           vehicleId: result.vehicleId,
           lastSeen: result.lastSeen,
@@ -515,8 +522,10 @@ export class Tracker {
         return;
       }
       case 'active':
-        // recovered from warning — visual indicator state'i caller (adapter veya kullanıcı)
-        // tarafından `vehiclewarning` event'inin yokluğuyla yönetilir
+        // Recovered from warning via sweeper — notify adapter so gap-visual
+        // treatment clears. (Ingest also fires this path immediately when a
+        // fresh ingest is what triggered the recovery; both are idempotent.)
+        this.options.adapter.setVehicleState?.(result.vehicleId, 'active');
         return;
     }
   }
