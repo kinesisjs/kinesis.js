@@ -120,6 +120,15 @@ export class KinesisMapDirective implements OnInit {
    */
   @Input() trail?: TrailRenderOptions;
 
+  /**
+   * Gap-visualization: vehicle `warning` state'e geçtiğinde marker bu opacity'ye
+   * (0-1) düşer; recovery (ingest veya sweeper active) ile 1.0'a döner. Belirtilmezse
+   * opacity'ye dokunulmaz (backward compatible).
+   *
+   * Tipik değer: 0.5-0.7. `OpenLayersAdapterOptions.warningOpacity`'ye eşdeğer.
+   */
+  @Input() warningOpacity?: number;
+
   /** Hangi adapter? Şu an sadece 'openlayers'. v0.3'te 'leaflet'. */
   @Input() adapter = 'openlayers' as const;
 
@@ -131,6 +140,7 @@ export class KinesisMapDirective implements OnInit {
     const mapAdapter = new OpenLayersAdapter(this.map, {
       ...(this.vehicleStyle ? { style: this.vehicleStyle } : {}),
       ...(this.trail ? { trail: this.trail } : {}),
+      ...(this.warningOpacity !== undefined ? { warningOpacity: this.warningOpacity } : {}),
     });
 
     const trackerOpts: TrackerOptions = {
