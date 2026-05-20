@@ -15,7 +15,11 @@ import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
 import { Tracker } from '@kinesisjs/core';
-import { OpenLayersAdapter, type VehicleStyleProvider } from '@kinesisjs/openlayers';
+import {
+  OpenLayersAdapter,
+  type TrailRenderOptions,
+  type VehicleStyleProvider,
+} from '@kinesisjs/openlayers';
 import type {
   AdaptiveOptions,
   FadeAnimationOptions,
@@ -109,6 +113,13 @@ export class KinesisMapDirective implements OnInit {
   /** Style provider — bkz. `createVehicleStyle()` helper'ı. */
   @Input() vehicleStyle?: VehicleStyleProvider;
 
+  /**
+   * Trail rendering — geride bıraktığı yol çizgisi (ayrı OL VectorLayer, marker'ların
+   * altında). Opt-in: `[trail]="{ enabled: true }"`. Detaylar için
+   * `@kinesisjs/openlayers` `TrailRenderOptions`'a bk.
+   */
+  @Input() trail?: TrailRenderOptions;
+
   /** Hangi adapter? Şu an sadece 'openlayers'. v0.3'te 'leaflet'. */
   @Input() adapter = 'openlayers' as const;
 
@@ -117,10 +128,10 @@ export class KinesisMapDirective implements OnInit {
 
   ngOnInit(): void {
     this.map = this.createMap();
-    const mapAdapter = new OpenLayersAdapter(
-      this.map,
-      this.vehicleStyle ? { style: this.vehicleStyle } : {},
-    );
+    const mapAdapter = new OpenLayersAdapter(this.map, {
+      ...(this.vehicleStyle ? { style: this.vehicleStyle } : {}),
+      ...(this.trail ? { trail: this.trail } : {}),
+    });
 
     const trackerOpts: TrackerOptions = {
       adapter: mapAdapter,
