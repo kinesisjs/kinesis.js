@@ -125,7 +125,7 @@ describe('KinesisMapDirective', () => {
     const fixture = TestBed.createComponent(SignalHostComponent);
     fixture.detectChanges();
 
-    const directive = fixture.debugElement.children[0].references['ref'] as
+    const directive = fixture.debugElement.children[0]!.references['ref'] as
       | KinesisMapDirective
       | undefined;
     expect(directive).toBeDefined();
@@ -138,7 +138,7 @@ describe('KinesisMapDirective', () => {
     const fixture = TestBed.createComponent(SignalHostComponent);
     fixture.detectChanges();
     const host = fixture.componentInstance;
-    const directive = fixture.debugElement.children[0].references['ref'] as KinesisMapDirective;
+    const directive = fixture.debugElement.children[0]!.references['ref'] as KinesisMapDirective;
     const tracker = directive.getTracker()!;
 
     host.positions.set([{ id: 'v1', lng: 29, lat: 41 }]);
@@ -152,7 +152,7 @@ describe('KinesisMapDirective', () => {
     const fixture = TestBed.createComponent(ObservableHostComponent);
     fixture.detectChanges();
     const host = fixture.componentInstance;
-    const directive = fixture.debugElement.children[0].injector.get(KinesisMapDirective);
+    const directive = fixture.debugElement.children[0]!.injector.get(KinesisMapDirective);
     const tracker = directive.getTracker()!;
 
     host.positions.next([
@@ -166,7 +166,7 @@ describe('KinesisMapDirective', () => {
     TestBed.configureTestingModule({ imports: [SignalHostComponent] });
     const fixture = TestBed.createComponent(SignalHostComponent);
     fixture.detectChanges();
-    const directive = fixture.debugElement.children[0].injector.get(KinesisMapDirective);
+    const directive = fixture.debugElement.children[0]!.injector.get(KinesisMapDirective);
     const tracker = directive.getTracker()!;
     const destroyHandler = vi.fn();
     tracker.on('destroy', destroyHandler);
@@ -183,7 +183,7 @@ describe('KinesisMapDirective', () => {
     const fixture = TestBed.createComponent(FullyConfiguredHostComponent);
     fixture.detectChanges();
 
-    const directive = fixture.debugElement.children[0].references['ref'] as KinesisMapDirective;
+    const directive = fixture.debugElement.children[0]!.references['ref'] as KinesisMapDirective;
     expect(directive.getTracker()).toBeInstanceOf(Tracker);
 
     // initialPositionBehavior='wait-for-second': first ingest should NOT add the

@@ -47,7 +47,7 @@
     "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
     "dev": "ng-packagr -p ng-package.json -c tsconfig.lib.json --watch",
     "test": "vitest run --root ../..",
-    "typecheck": "tsc -p tsconfig.lib.json --noEmit"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@kinesisjs/core": "workspace:*",
