@@ -349,3 +349,53 @@ describe('OpenLayersAdapter — trail rendering', () => {
     expect(adapter.getMemoryEstimate()).toBe(352);
   });
 });
+
+describe('OpenLayersAdapter — setVehicleState (gap visualization)', () => {
+  it("always sets 'vehicleState' feature property regardless of opacity config", () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map);
+    adapter.addVehicle('v1', pt(0, 0));
+    adapter.setVehicleState('v1', 'warning');
+    expect(adapter.getFeature('v1')?.get('vehicleState')).toBe('warning');
+    adapter.setVehicleState('v1', 'active');
+    expect(adapter.getFeature('v1')?.get('vehicleState')).toBe('active');
+  });
+
+  it('without warningOpacity, setVehicleState does NOT change opacity', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map);
+    adapter.addVehicle('v1', pt(0, 0));
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+    adapter.setVehicleState('v1', 'warning');
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+  });
+
+  it('with warningOpacity, warning dims marker and active restores it', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { warningOpacity: 0.5 });
+    adapter.addVehicle('v1', pt(0, 0));
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+
+    adapter.setVehicleState('v1', 'warning');
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(0.5);
+
+    adapter.setVehicleState('v1', 'active');
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+  });
+
+  it('does not touch opacity for stale / completed (those are followed by removeVehicle)', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { warningOpacity: 0.5 });
+    adapter.addVehicle('v1', pt(0, 0));
+    adapter.setVehicleState('v1', 'stale');
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+    adapter.setVehicleState('v1', 'completed');
+    expect(adapter.getFeature('v1')?.get('opacity')).toBe(1);
+  });
+
+  it('is a no-op for unknown vehicle ids', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map);
+    expect(() => adapter.setVehicleState('ghost', 'warning')).not.toThrow();
+  });
+});

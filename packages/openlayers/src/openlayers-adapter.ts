@@ -8,7 +8,7 @@ import Stroke from 'ol/style/Stroke';
 import Style from 'ol/style/Style';
 import type OLMap from 'ol/Map';
 import type { Coordinate } from 'ol/coordinate';
-import type { TrackAdapter, TrailPoint } from '@kinesisjs/core';
+import type { TrackAdapter, TrailPoint, VehicleState } from '@kinesisjs/core';
 import type { OpenLayersAdapterOptions, TrailRenderOptions } from './types';
 
 interface ResolvedTrailOptions {
@@ -207,6 +207,27 @@ export class OpenLayersAdapter implements TrackAdapter {
     if (img) {
       img.setOpacity(opacity);
       feature.changed();
+    }
+  }
+
+  /**
+   * Opsiyonel TrackAdapter metodu — Tracker vehicle lifecycle state değiştirdiğinde
+   * çağrılır. Feature property olarak `vehicleState` her zaman set edilir (external
+   * okuma için). `warningOpacity` config'i varsa warning'e geçince marker o opacity'ye
+   * düşer, recovery'de (active'e dönünce) 1.0'a geri çıkar. `stale`/`completed`
+   * state'leri burada handle edilmez — hemen `removeVehicle` izler.
+   */
+  setVehicleState(id: string, state: VehicleState): void {
+    const feature = this.features.get(id);
+    if (!feature) return;
+    feature.set('vehicleState', state, true);
+
+    const dim = this.options.warningOpacity;
+    if (dim === undefined) return; // opt-out: no opacity treatment
+    if (state === 'warning') {
+      this.updateOpacity(id, dim);
+    } else if (state === 'active') {
+      this.updateOpacity(id, 1);
     }
   }
 

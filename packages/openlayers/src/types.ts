@@ -44,6 +44,16 @@ export interface OpenLayersAdapterOptions {
    * Defaults off; pass `{ enabled: true }` to opt in.
    */
   trail?: TrailRenderOptions;
+
+  /**
+   * Opacity uygulanan değer 0-1 arasında, vehicle `warning` state'e geçtiğinde.
+   * Sweeper warning'e geçirdiğinde marker bu opacity'ye düşer; recovery'de (ingest
+   * veya sweeper active'e döndüğünde) 1.0'a geri çıkar.
+   *
+   * Belirtilmezse opacity değişmez — gap visualization opt-out kalır.
+   * Tipik değer: 0.5-0.7.
+   */
+  warningOpacity?: number;
 }
 
 /**
