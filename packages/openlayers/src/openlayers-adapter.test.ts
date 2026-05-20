@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import Feature from 'ol/Feature';
+import type LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
@@ -224,5 +225,127 @@ describe('OpenLayersAdapter — getMemoryEstimate', () => {
     adapter.addVehicle('v1', pt(0, 0));
     adapter.addVehicle('v2', pt(0, 0));
     expect(adapter.getMemoryEstimate()).toBe(512);
+  });
+});
+
+describe('OpenLayersAdapter — trail rendering', () => {
+  // Helper: extract a layer by `name` property from the fake map's layer list.
+  const trailLayerOf = (m: OLMap): VectorLayer<VectorSource> | undefined => {
+    const layers = (m as unknown as FakeMap).layers;
+    return layers.find((l) => l.get('name') === 'kinesis-trails');
+  };
+  const trailFeatureOf = (m: OLMap, vehicleId: string): Feature | undefined => {
+    return trailLayerOf(m)?.getSource()?.getFeatureById(`trail:${vehicleId}`) ?? undefined;
+  };
+
+  it('does not create a trail layer when trail.enabled is false (backward compat)', () => {
+    const map = makeMap();
+    new OpenLayersAdapter(map);
+    expect(trailLayerOf(map)).toBeUndefined();
+    new OpenLayersAdapter(map, { trail: { enabled: false } });
+    expect(trailLayerOf(map)).toBeUndefined();
+  });
+
+  it('creates a separate trail layer when trail.enabled is true', () => {
+    const map = makeMap();
+    new OpenLayersAdapter(map, { trail: { enabled: true } });
+    const layer = trailLayerOf(map);
+    expect(layer).toBeDefined();
+    // Default zIndex is -1 so the trail draws below the vehicle layer.
+    expect(layer?.getZIndex()).toBe(-1);
+  });
+
+  it('addVehicle seeds the trail with a single coordinate', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true, intervalMs: 0 } });
+    adapter.addVehicle('v1', pt(29, 41));
+    const trail = trailFeatureOf(map, 'v1');
+    const geom = trail?.getGeometry() as LineString | undefined;
+    expect(geom?.getCoordinates()?.length).toBe(1);
+  });
+
+  it('updatePosition appends to the trail (intervalMs: 0 disables throttling)', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true, intervalMs: 0 } });
+    adapter.addVehicle('v1', pt(29, 41));
+    adapter.updatePosition('v1', pt(29.001, 41));
+    adapter.updatePosition('v1', pt(29.002, 41));
+    const geom = trailFeatureOf(map, 'v1')?.getGeometry() as LineString | undefined;
+    expect(geom?.getCoordinates()?.length).toBe(3);
+  });
+
+  it('caps the trail at maxPoints (ring buffer)', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, {
+      trail: { enabled: true, intervalMs: 0, maxPoints: 4 },
+    });
+    adapter.addVehicle('v1', pt(0, 0));
+    for (let i = 1; i <= 10; i++) {
+      adapter.updatePosition('v1', pt(i * 0.001, 0));
+    }
+    const geom = trailFeatureOf(map, 'v1')?.getGeometry() as LineString | undefined;
+    expect(geom?.getCoordinates()?.length).toBe(4);
+  });
+
+  it('removeVehicle removes the trail feature too', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true, intervalMs: 0 } });
+    adapter.addVehicle('v1', pt(0, 0));
+    expect(trailFeatureOf(map, 'v1')).toBeDefined();
+    adapter.removeVehicle('v1');
+    expect(trailFeatureOf(map, 'v1')).toBeUndefined();
+  });
+
+  it('destroy removes the trail layer from the map', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true } });
+    expect(trailLayerOf(map)).toBeDefined();
+    adapter.destroy();
+    expect(trailLayerOf(map)).toBeUndefined();
+  });
+
+  it('resolves trail color from TrailPoint.meta.color when no explicit color given', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true, intervalMs: 0 } });
+    adapter.addVehicle('v1', pt(0, 0, { meta: { color: '#dc2626' } }));
+    const trail = trailFeatureOf(map, 'v1');
+    const style = trail?.getStyle() as Style | undefined;
+    const stroke = style?.getStroke?.();
+    expect(stroke?.getColor()).toBe('rgba(220, 38, 38, 0.5)');
+  });
+
+  it('explicit trail.color overrides meta.color', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, {
+      trail: { enabled: true, intervalMs: 0, color: '#22c55e', opacity: 0.7 },
+    });
+    adapter.addVehicle('v1', pt(0, 0, { meta: { color: '#dc2626' } }));
+    const trail = trailFeatureOf(map, 'v1');
+    const style = trail?.getStyle() as Style | undefined;
+    expect(style?.getStroke?.()?.getColor()).toBe('rgba(34, 197, 94, 0.7)');
+  });
+
+  it('throttles trail samples by intervalMs (default 100 ms)', async () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true /* default 100ms */ } });
+    adapter.addVehicle('v1', pt(0, 0));
+    // Three rapid-fire updates within 10ms — only the very first one might land
+    // depending on timing; throttling should drop the second and third.
+    adapter.updatePosition('v1', pt(0.001, 0));
+    adapter.updatePosition('v1', pt(0.002, 0));
+    adapter.updatePosition('v1', pt(0.003, 0));
+    const geom = trailFeatureOf(map, 'v1')?.getGeometry() as LineString | undefined;
+    // Initial seed = 1 point. With aggressive throttling, at most 1 additional
+    // (and likely 0) lands. We assert <= 2 to allow for timing wiggle.
+    expect(geom?.getCoordinates()?.length).toBeLessThanOrEqual(2);
+  });
+
+  it('getMemoryEstimate accounts for trail points', () => {
+    const map = makeMap();
+    const adapter = new OpenLayersAdapter(map, { trail: { enabled: true, intervalMs: 0 } });
+    adapter.addVehicle('v1', pt(0, 0)); // 256 (vehicle) + 64 + 1*16 (trail) = 336
+    expect(adapter.getMemoryEstimate()).toBe(336);
+    adapter.updatePosition('v1', pt(0.001, 0)); // trail now 2 points → +16
+    expect(adapter.getMemoryEstimate()).toBe(352);
   });
 });

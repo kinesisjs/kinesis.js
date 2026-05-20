@@ -1,12 +1,31 @@
 import Feature from 'ol/Feature';
+import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import VectorLayer from 'ol/layer/Vector';
 import { fromLonLat } from 'ol/proj';
 import VectorSource from 'ol/source/Vector';
+import Stroke from 'ol/style/Stroke';
+import Style from 'ol/style/Style';
 import type OLMap from 'ol/Map';
-import type Style from 'ol/style/Style';
+import type { Coordinate } from 'ol/coordinate';
 import type { TrackAdapter, TrailPoint } from '@kinesisjs/core';
-import type { OpenLayersAdapterOptions } from './types';
+import type { OpenLayersAdapterOptions, TrailRenderOptions } from './types';
+
+interface ResolvedTrailOptions {
+  maxPoints: number;
+  intervalMs: number;
+  width: number;
+  opacity: number;
+  color?: string;
+  defaultColor: string;
+  zIndex: number;
+}
+
+interface TrailEntry {
+  feature: Feature<LineString>;
+  coords: Coordinate[];
+  lastSampledAt: number;
+}
 
 /**
  * Kinesis.js Core'un `TrackAdapter` interface'ini OpenLayers için uygulayan adapter.
@@ -15,6 +34,7 @@ import type { OpenLayersAdapterOptions } from './types';
  *   - Her araç için bir `Feature<Point>` lifecycle'ı (create/update/remove)
  *   - Statik veya dinamik style uygulama (her `updatePosition`'da yeniden üretilebilir)
  *   - Opsiyonel opacity güncellemesi (fade behavior için)
+ *   - Opsiyonel trail rendering (geride bıraktığı yol, ayrı VectorLayer)
  *   - `managedFeatureIds` ile mevcut layer'da diğer feature'lara dokunmama
  *   - Bellek tahmini (`getMemoryEstimate`) — Tracker.getStats için
  *
@@ -27,6 +47,13 @@ export class OpenLayersAdapter implements TrackAdapter {
   private readonly projection: string;
   private readonly ownedLayer: boolean;
   private managedIds: Set<string> | null = null;
+
+  private readonly trail: {
+    opts: ResolvedTrailOptions;
+    source: VectorSource;
+    layer: VectorLayer<VectorSource>;
+    entries: Map<string, TrailEntry>;
+  } | null;
 
   constructor(
     private readonly map: OLMap,
@@ -55,6 +82,20 @@ export class OpenLayersAdapter implements TrackAdapter {
       this.map.addLayer(this.layer);
       this.ownedLayer = true;
     }
+
+    if (options.trail?.enabled) {
+      const opts = resolveTrailOptions(options.trail);
+      const source = new VectorSource();
+      const layer = new VectorLayer({
+        source,
+        properties: { name: 'kinesis-trails' },
+        zIndex: opts.zIndex,
+      });
+      this.map.addLayer(layer);
+      this.trail = { opts, source, layer, entries: new Map() };
+    } else {
+      this.trail = null;
+    }
   }
 
   // ─── TrackAdapter contract ────────────────────────────────────────────
@@ -82,6 +123,8 @@ export class OpenLayersAdapter implements TrackAdapter {
 
     this.features.set(id, feature);
     this.source.addFeature(feature);
+
+    if (this.trail) this.initTrail(id, initialPoint);
   }
 
   updatePosition(id: string, point: TrailPoint): void {
@@ -103,13 +146,23 @@ export class OpenLayersAdapter implements TrackAdapter {
       }
       feature.setStyle(newStyle);
     }
+
+    if (this.trail) this.appendToTrail(id, point);
   }
 
   removeVehicle(id: string): void {
     const feature = this.features.get(id);
-    if (!feature) return;
-    this.source.removeFeature(feature);
-    this.features.delete(id);
+    if (feature) {
+      this.source.removeFeature(feature);
+      this.features.delete(id);
+    }
+    if (this.trail) {
+      const t = this.trail.entries.get(id);
+      if (t) {
+        this.trail.source.removeFeature(t.feature);
+        this.trail.entries.delete(id);
+      }
+    }
   }
 
   destroy(): void {
@@ -128,6 +181,15 @@ export class OpenLayersAdapter implements TrackAdapter {
     this.features.clear();
     if (this.ownedLayer) {
       this.map.removeLayer(this.layer);
+    }
+
+    // Trails her zaman adapter-owned; topyekun temizle.
+    if (this.trail) {
+      for (const t of this.trail.entries.values()) {
+        this.trail.source.removeFeature(t.feature);
+      }
+      this.trail.entries.clear();
+      this.map.removeLayer(this.trail.layer);
     }
   }
 
@@ -150,10 +212,16 @@ export class OpenLayersAdapter implements TrackAdapter {
 
   /**
    * Opsiyonel TrackAdapter metodu — Tracker.getStats memoryBreakdown için.
-   * Feature başına ~256B (Point geom + properties + style ref) tahmini.
+   * Feature başına ~256B, trail başına ~64B + 16B/coord tahmini.
    */
   getMemoryEstimate(): number {
-    return this.features.size * 256;
+    let bytes = this.features.size * 256;
+    if (this.trail) {
+      for (const t of this.trail.entries.values()) {
+        bytes += 64 + t.coords.length * 16;
+      }
+    }
+    return bytes;
   }
 
   // ─── Public utilities ─────────────────────────────────────────────────
@@ -178,4 +246,87 @@ export class OpenLayersAdapter implements TrackAdapter {
   private project(point: { lng: number; lat: number }): [number, number] {
     return fromLonLat([point.lng, point.lat], this.projection) as [number, number];
   }
+
+  private initTrail(id: string, point: TrailPoint): void {
+    if (!this.trail) return;
+    const coord = this.project(point);
+    const feature = new Feature({ geometry: new LineString([coord]) });
+    feature.setId(`trail:${id}`);
+    feature.setStyle(this.trailStyleFor(point));
+    this.trail.source.addFeature(feature);
+    this.trail.entries.set(id, { feature, coords: [coord], lastSampledAt: 0 });
+  }
+
+  private appendToTrail(id: string, point: TrailPoint): void {
+    if (!this.trail) return;
+    const opts = this.trail.opts;
+    const entry = this.trail.entries.get(id);
+    if (!entry) {
+      this.initTrail(id, point);
+      return;
+    }
+    if (opts.intervalMs > 0) {
+      const now = Date.now();
+      if (now - entry.lastSampledAt < opts.intervalMs) return;
+      entry.lastSampledAt = now;
+    }
+    const coord = this.project(point);
+    entry.coords.push(coord);
+    if (entry.coords.length > opts.maxPoints) {
+      entry.coords.splice(0, entry.coords.length - opts.maxPoints);
+    }
+    (entry.feature.getGeometry() as LineString).setCoordinates(entry.coords);
+    // Refresh style — covers the rare case where vehicle's meta.color changes
+    // (e.g. fleet re-skinned mid-run). Cheap; OL diffs the style internally.
+    entry.feature.setStyle(this.trailStyleFor(point));
+  }
+
+  private trailStyleFor(point: TrailPoint): Style {
+    const opts = this.trail?.opts;
+    const fallback = opts?.defaultColor ?? '#3b82f6';
+    const baseColor =
+      opts?.color ??
+      (typeof point.meta?.['color'] === 'string' ? (point.meta['color'] as string) : undefined) ??
+      fallback;
+    return new Style({
+      stroke: new Stroke({
+        color: applyAlpha(baseColor, opts?.opacity ?? 0.5),
+        width: opts?.width ?? 3,
+      }),
+    });
+  }
+}
+
+function resolveTrailOptions(opts: TrailRenderOptions): ResolvedTrailOptions {
+  return {
+    maxPoints: opts.maxPoints ?? 60,
+    intervalMs: opts.intervalMs ?? 100,
+    width: opts.width ?? 3,
+    opacity: opts.opacity ?? 0.5,
+    color: opts.color,
+    defaultColor: opts.defaultColor ?? '#3b82f6',
+    zIndex: opts.zIndex ?? -1,
+  };
+}
+
+/**
+ * Hex (`#rrggbb` veya `#rgb`) renge alfa uygular ve `rgba(...)` döner.
+ * Diğer formatları (named, rgb(), rgba()) olduğu gibi geçirir — kullanıcı
+ * istediği şekilde alfayı zaten verdi varsayılır.
+ */
+function applyAlpha(color: string, alpha: number): string {
+  if (!color.startsWith('#')) return color;
+  const hex = color.slice(1);
+  const expanded =
+    hex.length === 3
+      ? hex
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : hex;
+  if (expanded.length !== 6) return color;
+  const r = parseInt(expanded.slice(0, 2), 16);
+  const g = parseInt(expanded.slice(2, 4), 16);
+  const b = parseInt(expanded.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

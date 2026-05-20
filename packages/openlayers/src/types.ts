@@ -38,6 +38,48 @@ export interface OpenLayersAdapterOptions {
    * Runtime'da `setManagedIds(...)` ile güncellenebilir.
    */
   managedFeatureIds?: Set<string> | string[];
+
+  /**
+   * Per-vehicle trail rendering (fading polyline behind each marker).
+   * Defaults off; pass `{ enabled: true }` to opt in.
+   */
+  trail?: TrailRenderOptions;
+}
+
+/**
+ * Trail (geride bıraktığı yol) çizimi opsiyonları. `OpenLayersAdapter` her aracın
+ * son N pozisyonunu kendi ring buffer'ında tutar ve ayrı bir VectorLayer'da
+ * `Feature<LineString>` olarak çizer. Marker katmanının altında kalır (zIndex < 0).
+ *
+ * Renk çözümleme sırası: explicit `color` → `TrailPoint.meta.color` (string) →
+ * `defaultColor` → `'#3b82f6'`. Bu sayede demo'daki fleet renkleri otomatik
+ * trail'lere yansır.
+ */
+export interface TrailRenderOptions {
+  /** Trail çizimi açık mı. Opt-in için zorunlu `true`. */
+  enabled: boolean;
+  /** Ring buffer kapasitesi (vehicle başına). Default: 60. */
+  maxPoints?: number;
+  /**
+   * Vehicle başına ardışık iki trail örneği arasında minimum ms. Tick frekansı
+   * (60 Hz) trail uzunluğunu çok çabuk tüketmesin diye throttle. Default: 100
+   * (≈10 Hz örnekleme). 0 verilirse her tick örneklenir.
+   */
+  intervalMs?: number;
+  /** Çizgi kalınlığı (piksel). Default: 3. */
+  width?: number;
+  /** Çizgi alfa kanalı, 0-1. Default: 0.5. */
+  opacity?: number;
+  /**
+   * Sabit trail rengi (CSS hex / rgb / named). Verilirse `meta.color`'ı ezer.
+   * Sadece hex (`#rrggbb` veya `#rgb`) için alfa uygulanır; diğer renklerde
+   * fonksiyon string'i olduğu gibi geri verir.
+   */
+  color?: string;
+  /** `color` ve `meta.color` yokken kullanılan fallback. Default: '#3b82f6'. */
+  defaultColor?: string;
+  /** Trail layer z-index. Negatif değer marker'ların altına alır. Default: -1. */
+  zIndex?: number;
 }
 
 export interface SpeedColorBand {

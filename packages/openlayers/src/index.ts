@@ -3,6 +3,7 @@ export { createVehicleStyle, colorForSpeed } from './style-builder';
 
 export type {
   OpenLayersAdapterOptions,
+  TrailRenderOptions,
   VehicleStyleOptions,
   VehicleStyleProvider,
   SpeedColorBand,
