@@ -103,12 +103,12 @@ The directive accepts the full tracker option surface as optional `@Input`s — 
 ></div>
 ```
 
-| Input | Type | Default | Purpose |
-| --- | --- | --- | --- |
-| `renderLagMs` | `number` | `1000` | Real-time interpolation buffer. Set `0` for snap-on-ingest. |
-| `adaptive` | `AdaptiveOptions` | `{}` | Adaptive zone thresholds. Only consulted when `interpolation` is `'adaptive'`. |
-| `fadeAnimation` | `FadeAnimationOptions` | `{ duration: 800, easing: 'ease-in-out' }` | Used in the adaptive `fade` zone. |
-| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'` | `'show-immediately'` | First-ingest UX for new vehicles. |
+| Input                     | Type                                                   | Default                                    | Purpose                                                                        |
+| ------------------------- | ------------------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `renderLagMs`             | `number`                                               | `1000`                                     | Real-time interpolation buffer. Set `0` for snap-on-ingest.                    |
+| `adaptive`                | `AdaptiveOptions`                                      | `{}`                                       | Adaptive zone thresholds. Only consulted when `interpolation` is `'adaptive'`. |
+| `fadeAnimation`           | `FadeAnimationOptions`                                 | `{ duration: 800, easing: 'ease-in-out' }` | Used in the adaptive `fade` zone.                                              |
+| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'` | `'show-immediately'`                       | First-ingest UX for new vehicles.                                              |
 
 See [Interpolation](/concepts/interpolation) for a deeper explanation of each knob.
 

@@ -22,7 +22,7 @@ The fix is a new option, `TrackerOptions.renderLagMs` (default **1 000 ms**), im
 
 ### `@kinesisjs/angular` — actually consumable by Angular AOT
 
-v0.1.0 was bundled with tsup, which preserved raw TS decorator output. Angular AOT consumers couldn't read the directive's metadata; `imports: [KinesisMapDirective]` failed at compile time with *"Component imports must be standalone components, directives, pipes, or must be NgModules."*
+v0.1.0 was bundled with tsup, which preserved raw TS decorator output. Angular AOT consumers couldn't read the directive's metadata; `imports: [KinesisMapDirective]` failed at compile time with _"Component imports must be standalone components, directives, pipes, or must be NgModules."_
 
 Rebuilt with `ng-packagr` (FESM2022 + Ivy partial-Ivy). Drops in cleanly to any Angular 17+ AOT consumer.
 

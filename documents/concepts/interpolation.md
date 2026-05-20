@@ -45,25 +45,25 @@ new Tracker({
 });
 ```
 
-| Mode | Behavior | Best for |
-| --- | --- | --- |
-| `linear` (default) | Straight-line lerp between previous and current | Most cases — recommended starting point |
-| `cubic` | Smoothstep easing (ease-in-out) | Sharper visual on sub-segment curves |
-| `geodesic` | Great-circle arc between two points | Ships, aircraft, long distances |
-| `none` | No interpolation, render snaps to current | Sub-second feeds; debugging |
-| `adaptive` | Period-aware switcher (see below) | Mixed-period feeds |
-| `CustomInterpolator` object | Your own `compute(from, to, ratio)` | Route-aware, predict |
+| Mode                        | Behavior                                        | Best for                                |
+| --------------------------- | ----------------------------------------------- | --------------------------------------- |
+| `linear` (default)          | Straight-line lerp between previous and current | Most cases — recommended starting point |
+| `cubic`                     | Smoothstep easing (ease-in-out)                 | Sharper visual on sub-segment curves    |
+| `geodesic`                  | Great-circle arc between two points             | Ships, aircraft, long distances         |
+| `none`                      | No interpolation, render snaps to current       | Sub-second feeds; debugging             |
+| `adaptive`                  | Period-aware switcher (see below)               | Mixed-period feeds                      |
+| `CustomInterpolator` object | Your own `compute(from, to, ratio)`             | Route-aware, predict                    |
 
 ## Adaptive zones
 
 `adaptive` mode picks a behavior per tick based on the **period** between previous and current ingests:
 
-| Period (ms) | Zone | Default range | Behavior |
-| --- | --- | --- | --- |
-| `< minPeriodMs` | `none` | `< 500` | Snap to current — period is short enough that interpolation is wasted CPU |
-| `min ≤ p ≤ max` | `linear` | `500 – 8 000` | Standard linear lerp |
-| `max < p ≤ fade` | `fade` | `8 000 – 15 000` | Animated fade-out, snap, fade-in (needs `adapter.updateOpacity`) |
-| `p > snap` | `snap` | `> 15 000` | Direct jump, no animation |
+| Period (ms)      | Zone     | Default range    | Behavior                                                                  |
+| ---------------- | -------- | ---------------- | ------------------------------------------------------------------------- |
+| `< minPeriodMs`  | `none`   | `< 500`          | Snap to current — period is short enough that interpolation is wasted CPU |
+| `min ≤ p ≤ max`  | `linear` | `500 – 8 000`    | Standard linear lerp                                                      |
+| `max < p ≤ fade` | `fade`   | `8 000 – 15 000` | Animated fade-out, snap, fade-in (needs `adapter.updateOpacity`)          |
+| `p > snap`       | `snap`   | `> 15 000`       | Direct jump, no animation                                                 |
 
 Tune for your feed:
 
@@ -72,8 +72,8 @@ new Tracker({
   adapter,
   interpolation: 'adaptive',
   adaptive: {
-    minPeriodMs: 200,       // for 5+ Hz feeds
-    fadeThresholdMs: 30_000 // for satellite/intermittent feeds
+    minPeriodMs: 200, // for 5+ Hz feeds
+    fadeThresholdMs: 30_000, // for satellite/intermittent feeds
   },
 });
 ```
@@ -104,7 +104,7 @@ new Tracker({ adapter, interpolation: myInterpolator });
 ```
 data arrival:   P₀────────────────P₁────────────────P₂
                 t=0               t=1000            t=2000
-                
+
 displayed:                 P₀────────────────P₁────────────────P₂
                            t=1000            t=2000            t=3000
                            ↑ shown 1000ms after each datum

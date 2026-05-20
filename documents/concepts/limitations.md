@@ -31,11 +31,11 @@ The formula assumes constant velocity and constant heading. When that assumption
 
 The [`AdaptiveInterpolator`](https://github.com/kinesisjs/kinesis.js/blob/main/packages/core/src/adaptive-interpolator.ts) handles three of the gaps:
 
-| Gap                       | Adaptive response                                         |
-| ------------------------- | --------------------------------------------------------- |
-| Very short period (<500ms)| `'none'` zone → interpolation is skipped, snap to current |
-| Long gap (8–15 s)         | `'fade'` zone → animated fade-out, snap, fade-in          |
-| Very long gap (> 15 s)    | `'snap'` zone → jump directly to the new position         |
+| Gap                        | Adaptive response                                         |
+| -------------------------- | --------------------------------------------------------- |
+| Very short period (<500ms) | `'none'` zone → interpolation is skipped, snap to current |
+| Long gap (8–15 s)          | `'fade'` zone → animated fade-out, snap, fade-in          |
+| Very long gap (> 15 s)     | `'snap'` zone → jump directly to the new position         |
 
 The default `none` threshold (`adaptive.minPeriodMs`) was 1 000 ms in v0.1.0/0.1.1 and was lowered to 500 ms in v0.1.2 — see [Interpolation → Adaptive zones](/concepts/interpolation#adaptive-zones).
 
