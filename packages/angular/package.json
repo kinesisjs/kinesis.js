@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/angular",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Angular Signals / RxJS wrapper for Kinesis.js",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
@@ -25,15 +25,16 @@
     "maps",
     "kinesisjs"
   ],
-  "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/fesm2022/kinesisjs-angular.mjs",
+  "module": "./dist/fesm2022/kinesisjs-angular.mjs",
+  "typings": "./dist/index.d.ts",
   "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "default": "./dist/fesm2022/kinesisjs-angular.mjs"
     }
   },
   "files": [
@@ -43,14 +44,15 @@
   ],
   "sideEffects": false,
   "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
+    "build": "ng-packagr -p ng-package.json -c tsconfig.lib.json",
+    "dev": "ng-packagr -p ng-package.json -c tsconfig.lib.json --watch",
     "test": "vitest run --root ../..",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc -p tsconfig.lib.json --noEmit"
   },
   "dependencies": {
     "@kinesisjs/core": "workspace:*",
-    "@kinesisjs/openlayers": "workspace:*"
+    "@kinesisjs/openlayers": "workspace:*",
+    "tslib": "^2.6.0"
   },
   "peerDependencies": {
     "@angular/common": ">=17.0.0",

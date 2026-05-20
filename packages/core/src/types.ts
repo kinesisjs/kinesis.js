@@ -179,6 +179,25 @@ export interface TrackerOptions {
   /** Heading shortest-arc interpolation. Default: true. */
   shortestArcHeading?: boolean;
 
+  /**
+   * Render-tarafı interpolation buffer (ms). Marker, ekranda `now - renderLagMs`
+   * anına denk gelen pozisyonda gösterilir.
+   *
+   * Olmadan: yeni ingest gelir gelmez `current.receivedAt = now`, dolayısıyla
+   * `elapsed = now - previous.receivedAt ≥ period` daima true olur ve tick her
+   * defasında current'a snap eder — interpolation **hiç çalışmaz**.
+   *
+   * Sağlıklı default: beklenen ingest periyodu kadar (örn. 1 Hz feed için 1000).
+   * Bu, "current" ingest edildiği anda `renderTime ≈ previous.receivedAt` yapar
+   * ve marker bir sonraki ingest gelene kadar previous'tan current'a düzgün akar.
+   *
+   * 0 verilirse buffer kapalıdır (eski v0.1.0 davranışı; gerçek-zamanlı
+   * interpolation gözükmez, sadece teleport).
+   *
+   * Default: 1000.
+   */
+  renderLagMs?: number;
+
   /** Web Worker'da çalıştır. Default: false (v0.2'de detaylandırılır). */
   worker?: boolean;
 

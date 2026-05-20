@@ -275,7 +275,13 @@ export class Tracker {
         continue;
       }
 
-      const elapsed = now - slot.previous.receivedAt;
+      // Render-side interpolation buffer (see TrackerOptions.renderLagMs).
+      // Without this, current.receivedAt == now at ingest, elapsed >= period
+      // would always hold, and the tick would only ever snap.
+      const renderLag = this.options.renderLagMs ?? 1000;
+      const renderTime = now - renderLag;
+      const elapsed = renderTime - slot.previous.receivedAt;
+
       if (elapsed >= period) {
         this.safeUpdate(vehicleId, slot.current);
       } else if (elapsed > 0) {
@@ -293,6 +299,10 @@ export class Tracker {
           forceCubic,
         );
         if (point) this.safeUpdate(vehicleId, point);
+      } else {
+        // renderTime still before previous.receivedAt — within the lag warm-up;
+        // hold at previous so the marker stays visible.
+        this.safeUpdate(vehicleId, slot.previous);
       }
       activeCount++;
     }

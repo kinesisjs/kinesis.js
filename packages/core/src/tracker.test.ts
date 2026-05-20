@@ -223,7 +223,10 @@ describe('Tracker with CustomInterpolator', () => {
     t.ingest([{ id: 'v1', lng: 29, lat: 41 }]);
     vi.setSystemTime(2000);
     t.ingest([{ id: 'v1', lng: 29.001, lat: 41 }]);
-    vi.setSystemTime(1500); // mid-period so elapsed < period
+    // With default renderLagMs=1000, renderTime = now - 1000. To land inside
+    // the interpolation window [previous.receivedAt, current.receivedAt] =
+    // [1000, 2000], wall-clock `now` must be in [2000, 3000].
+    vi.setSystemTime(2500); // renderTime=1500 → midway between previous and current
     t.tickOnce();
     expect(customCompute).toHaveBeenCalled();
     vi.useRealTimers();
@@ -243,10 +246,64 @@ describe('Tracker with CustomInterpolator', () => {
     t.ingest([{ id: 'v1', lng: 29, lat: 41 }]);
     vi.setSystemTime(2000);
     t.ingest([{ id: 'v1', lng: 29.001, lat: 41 }]);
-    vi.setSystemTime(1500);
+    vi.setSystemTime(2500); // renderTime=1500, midway → triggers interpolation path
     t.tickOnce();
     // First tick: linear fallback used; updatePosition called nonetheless
     expect(adapter.updatePosition).toHaveBeenCalled();
     vi.useRealTimers();
+  });
+});
+
+describe('Tracker render-lag (interpolation buffer)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // lng deltas kept tiny so the per-tick distance stays under the
+  // anomalous-jump sanity threshold (≈21 m at default speed 50 km/h).
+  const LNG_FROM = 29.0;
+  const LNG_TO = 29.0001; // ~11 m east
+  const LNG_MID = (LNG_FROM + LNG_TO) / 2;
+
+  it('default renderLagMs=1000 enables real-time interpolation between ingests', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const adapter = new MockAdapter();
+    const t = new Tracker({ adapter, ingestThrottle: 0 });
+    t.ingest([{ id: 'v1', lng: LNG_FROM, lat: 41, speed: 50 }]);
+    vi.setSystemTime(2000);
+    t.ingest([{ id: 'v1', lng: LNG_TO, lat: 41, speed: 50 }]);
+
+    // now=2000, renderTime=1000 → elapsed=0 → hold at previous
+    t.tickOnce();
+    let lastCall = adapter.updatePosition.mock.calls.at(-1);
+    expect(lastCall?.[1].lng).toBeCloseTo(LNG_FROM, 8);
+
+    // now=2500, renderTime=1500 → ratio=0.5 → midway
+    vi.setSystemTime(2500);
+    t.tickOnce();
+    lastCall = adapter.updatePosition.mock.calls.at(-1);
+    expect(lastCall?.[1].lng).toBeCloseTo(LNG_MID, 8);
+
+    // now=3000, renderTime=2000 → elapsed=period → snap to current
+    vi.setSystemTime(3000);
+    t.tickOnce();
+    lastCall = adapter.updatePosition.mock.calls.at(-1);
+    expect(lastCall?.[1].lng).toBeCloseTo(LNG_TO, 8);
+  });
+
+  it('renderLagMs=0 reproduces legacy snap-on-ingest behavior', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const adapter = new MockAdapter();
+    const t = new Tracker({ adapter, ingestThrottle: 0, renderLagMs: 0 });
+    t.ingest([{ id: 'v1', lng: LNG_FROM, lat: 41, speed: 50 }]);
+    vi.setSystemTime(2000);
+    t.ingest([{ id: 'v1', lng: LNG_TO, lat: 41, speed: 50 }]);
+
+    // Immediately after second ingest with no render lag: elapsed=period → snap to current.
+    t.tickOnce();
+    const lastCall = adapter.updatePosition.mock.calls.at(-1);
+    expect(lastCall?.[1].lng).toBeCloseTo(LNG_TO, 8);
   });
 });

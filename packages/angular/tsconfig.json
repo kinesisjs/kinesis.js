@@ -15,5 +15,5 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "src/**/*.bench.ts", "dist", "node_modules"]
+  "exclude": ["src/**/*.bench.ts", "dist", "node_modules"]
 }
