@@ -1,5 +1,5 @@
 ---
-'@kinesisjs/angular': minor
+'@kinesisjs/angular': patch
 ---
 
 `KinesisMapDirective` now exposes the `warningOpacity` adapter option as an
