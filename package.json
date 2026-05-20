@@ -31,10 +31,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "clean": "pnpm -r exec rimraf dist node_modules coverage",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "size": "node scripts/check-bundle-sizes.mjs",
+    "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm size",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "changeset:publish": "pnpm build && changeset publish"
+    "changeset:publish": "pnpm build && changeset publish",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@angular/common": "^19",
@@ -52,7 +54,9 @@
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.17.0",
     "globals": "^15.14.0",
+    "husky": "^9.1.7",
     "jsdom": "^29.1.1",
+    "lint-staged": "^16",
     "ng-packagr": "^19",
     "ol": "^10.9.0",
     "prettier": "^3.4.2",
@@ -72,5 +76,14 @@
       "@angular/platform-browser": "^19",
       "@angular/platform-browser-dynamic": "^19"
     }
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,cjs}": [
+      "prettier --write",
+      "eslint --max-warnings=0"
+    ],
+    "*.{json,md,yml,yaml,scss,css,html}": [
+      "prettier --write"
+    ]
   }
 }
