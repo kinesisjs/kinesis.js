@@ -95,6 +95,26 @@ class ObservableHostComponent {
   positions = new BehaviorSubject<Position[]>([]);
 }
 
+@Component({
+  standalone: true,
+  imports: [KinesisMapDirective],
+  template: `<div
+    kinesisMap
+    [positions]="positions"
+    [interpolation]="'adaptive'"
+    [renderLagMs]="0"
+    [adaptive]="{ minPeriodMs: 200, maxPeriodMs: 5000 }"
+    [fadeAnimation]="{ duration: 400, easing: 'linear' }"
+    [initialPositionBehavior]="'wait-for-second'"
+    [ingestThrottle]="0"
+    #ref="kinesisMap"
+    style="width:200px;height:200px"
+  ></div>`,
+})
+class FullyConfiguredHostComponent {
+  positions = signal<Position[]>([]);
+}
+
 describe('KinesisMapDirective', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
@@ -156,5 +176,22 @@ describe('KinesisMapDirective', () => {
     expect(destroyHandler).toHaveBeenCalledTimes(1);
     expect(directive.getTracker()).toBeUndefined();
     expect(directive.getMap()).toBeUndefined();
+  });
+
+  it('accepts all advanced @Inputs (renderLagMs, adaptive, fadeAnimation, initialPositionBehavior)', () => {
+    TestBed.configureTestingModule({ imports: [FullyConfiguredHostComponent] });
+    const fixture = TestBed.createComponent(FullyConfiguredHostComponent);
+    fixture.detectChanges();
+
+    const directive = fixture.debugElement.children[0].references['ref'] as KinesisMapDirective;
+    expect(directive.getTracker()).toBeInstanceOf(Tracker);
+
+    // initialPositionBehavior='wait-for-second': first ingest should NOT add the
+    // vehicle to the adapter (i.e. it's tracked internally but not visible yet).
+    const host = fixture.componentInstance;
+    host.positions.set([{ id: 'v1', lng: 29, lat: 41 }]);
+    fixture.detectChanges();
+    const stats = directive.getTracker()!.getStats();
+    expect(stats.vehicleCount).toBe(1);
   });
 });

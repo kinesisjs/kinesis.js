@@ -16,7 +16,13 @@ import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
 import { Tracker } from '@kinesisjs/core';
 import { OpenLayersAdapter, type VehicleStyleProvider } from '@kinesisjs/openlayers';
-import type { Position, TrackerOptions } from '@kinesisjs/core';
+import type {
+  AdaptiveOptions,
+  FadeAnimationOptions,
+  InitialPositionBehavior,
+  Position,
+  TrackerOptions,
+} from '@kinesisjs/core';
 import { bindPositions } from './kinesis-tracker.factory';
 
 /**
@@ -73,6 +79,33 @@ export class KinesisMapDirective implements OnInit {
   /** Aynı vehicleId için minimum ingest aralığı (ms). Default: 100. */
   @Input() ingestThrottle = 100;
 
+  /**
+   * Render-tarafı interpolation buffer (ms). 1 Hz GPS feed için 1000 idealdir
+   * (default). 0 = legacy snap-on-ingest davranışı. v0.1.1+ için detay:
+   * `TrackerOptions.renderLagMs` JSDoc'u.
+   */
+  @Input() renderLagMs?: number;
+
+  /**
+   * Adaptive interpolation zone eşikleri. `interpolation: 'adaptive'` kullanıldığında
+   * geçerli. Default eşikler için `AdaptiveOptions` bk.
+   * Örn: `[adaptive]="{ minPeriodMs: 200 }"` çok hızlı feed'ler için.
+   */
+  @Input() adaptive?: AdaptiveOptions;
+
+  /**
+   * Adaptive 'fade' zone tetiklendiğinde animasyon parametreleri. Default:
+   * duration 800ms, easing 'ease-in-out'.
+   */
+  @Input() fadeAnimation?: FadeAnimationOptions;
+
+  /**
+   * İlk pozisyon geldiğinde davranış: `'show-immediately'` (default),
+   * `'wait-for-second'` (iki nokta gelene kadar haritada görünmez), veya
+   * `'fade-in'` (opacity 0→1 ile yumuşak giriş).
+   */
+  @Input() initialPositionBehavior?: InitialPositionBehavior;
+
   /** Style provider — bkz. `createVehicleStyle()` helper'ı. */
   @Input() vehicleStyle?: VehicleStyleProvider;
 
@@ -88,25 +121,22 @@ export class KinesisMapDirective implements OnInit {
       this.map,
       this.vehicleStyle ? { style: this.vehicleStyle } : {},
     );
-    const interpolation = this.interpolation;
-    this.trackerInstance = new Tracker(
-      interpolation === undefined
-        ? {
-            adapter: mapAdapter,
-            maxInterpolationGap: this.maxInterpolationGap,
-            warningThreshold: this.warningThreshold,
-            staleThreshold: this.staleThreshold,
-            ingestThrottle: this.ingestThrottle,
-          }
-        : {
-            adapter: mapAdapter,
-            interpolation,
-            maxInterpolationGap: this.maxInterpolationGap,
-            warningThreshold: this.warningThreshold,
-            staleThreshold: this.staleThreshold,
-            ingestThrottle: this.ingestThrottle,
-          },
-    );
+
+    const trackerOpts: TrackerOptions = {
+      adapter: mapAdapter,
+      maxInterpolationGap: this.maxInterpolationGap,
+      warningThreshold: this.warningThreshold,
+      staleThreshold: this.staleThreshold,
+      ingestThrottle: this.ingestThrottle,
+      ...(this.interpolation !== undefined ? { interpolation: this.interpolation } : {}),
+      ...(this.renderLagMs !== undefined ? { renderLagMs: this.renderLagMs } : {}),
+      ...(this.adaptive !== undefined ? { adaptive: this.adaptive } : {}),
+      ...(this.fadeAnimation !== undefined ? { fadeAnimation: this.fadeAnimation } : {}),
+      ...(this.initialPositionBehavior !== undefined
+        ? { initialPositionBehavior: this.initialPositionBehavior }
+        : {}),
+    };
+    this.trackerInstance = new Tracker(trackerOpts);
 
     bindPositions(this.trackerInstance, this.positions, this.destroyRef, this.injector);
     this.trackerInstance.start();
