@@ -1,5 +1,35 @@
 # @kinesisjs/angular
 
+## 0.1.2
+
+### Patch Changes
+
+- [`1f65ffb`](https://github.com/kinesisjs/kinesis.js/commit/1f65ffb7b52e704e35e197b02413e616f6c4f71c) Thanks [@Mu-As](https://github.com/Mu-As)! - `KinesisMapDirective` now exposes four advanced `TrackerOptions` as optional `@Input`s. Previously these were only reachable via the lower-level `kinesisTracker(...)` factory.
+  - `[renderLagMs]` — real-time interpolation buffer size (default `1000`)
+  - `[adaptive]` — adaptive zone thresholds object
+  - `[fadeAnimation]` — duration / easing for the adaptive `fade` zone
+  - `[initialPositionBehavior]` — `'show-immediately' | 'wait-for-second' | 'fade-in'`
+
+  Example:
+
+  ```html
+  <div
+    kinesisMap
+    [positions]="positions"
+    [interpolation]="'adaptive'"
+    [renderLagMs]="800"
+    [adaptive]="{ minPeriodMs: 200, fadeThresholdMs: 30000 }"
+    [fadeAnimation]="{ duration: 400, easing: 'linear' }"
+    [initialPositionBehavior]="'fade-in'"
+  ></div>
+  ```
+
+  All four inputs are optional — omitting them keeps the tracker defaults.
+
+- Updated dependencies [[`946aeeb`](https://github.com/kinesisjs/kinesis.js/commit/946aeebee1c64daa69acb450a0c375baef06d478)]:
+  - @kinesisjs/core@0.1.2
+  - @kinesisjs/openlayers@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes
