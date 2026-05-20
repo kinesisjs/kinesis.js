@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/openlayers",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "OpenLayers map adapter for Kinesis.js — feature lifecycle and styling",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
