@@ -1,0 +1,76 @@
+name: Debug OIDC (temporary, v0.1.3 investigation)
+
+# Manual-trigger-only workflow that fetches the GitHub Actions OIDC token with
+# the same audience npm uses (`npm:registry.npmjs.org`) and prints its claims.
+# The claims are then compared by hand against the Trusted Publisher config on
+# https://www.npmjs.com/package/@kinesisjs/<pkg>/access to find the mismatch
+# that's causing E404 on PUT during `npm publish`.
+#
+# Delete this workflow file once the Trusted Publishing E404 is resolved.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump-oidc-claims:
+    name: Dump OIDC token claims (no secrets in output)
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Fetch + decode OIDC claims for npm audience
+        run: |
+          set -euo pipefail
+          AUDIENCE="npm:registry.npmjs.org"
+          echo "Requesting OIDC token with audience='$AUDIENCE'"
+
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" \
+            | jq -r '.value')
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "ERROR: failed to fetch OIDC token. Check id-token: write permission."
+            exit 1
+          fi
+
+          # JWT structure is header.payload.signature, all base64url-encoded.
+          # We decode payload only (claims). Never print the token itself.
+          PAYLOAD=$(echo "$TOKEN" | cut -d'.' -f2)
+
+          echo ""
+          echo "=================================================================="
+          echo "OIDC token claims (audience=$AUDIENCE):"
+          echo "=================================================================="
+          python3 -c "
+          import base64, json, sys
+          b = '''$PAYLOAD'''
+          b += '=' * ((4 - len(b) % 4) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(b))
+          # Filter out non-identifying boilerplate to keep the output readable
+          drop = {'iat','exp','nbf','jti','aud','iss'}
+          identity = {k: v for k, v in claims.items() if k not in drop}
+          print(json.dumps(identity, indent=2, sort_keys=True))
+          print('')
+          print('--- token validity ---')
+          print(json.dumps({
+            'aud': claims.get('aud'),
+            'iss': claims.get('iss'),
+            'iat': claims.get('iat'),
+            'exp': claims.get('exp'),
+            'ttl_seconds': claims.get('exp', 0) - claims.get('iat', 0),
+          }, indent=2))
+          "
+
+          echo ""
+          echo "=================================================================="
+          echo "Compare these claims against each npm Trusted Publisher config:"
+          echo "  - 'repository' must equal:  <Organization>/<Repository> on the form"
+          echo "  - 'job_workflow_ref' format: <org>/<repo>/.github/workflows/<file>@<ref>"
+          echo "    The Trusted Publisher 'Workflow filename' field becomes the <file>"
+          echo "    part. Any mismatch (case, extension, subdirectory) -> E404."
+          echo "  - 'environment' must equal the form's 'Environment name'"
+          echo "    (empty form field == no 'environment' claim in token)"
+          echo "=================================================================="
