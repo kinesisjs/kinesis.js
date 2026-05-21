@@ -1,11 +1,12 @@
 import type { SweepResult, VehicleSlot, VehicleState } from './types';
 
 /**
- * Multi-state vehicle lifecycle yöneticisi.
+ * Multi-state vehicle lifecycle manager.
  *
- * Her `checkInterval`'da slot'ları gezer, idle süresine göre state geçişlerini
- * `onStateChange` ile bildirir. `completed` terminal state'tir; bu state'e geçen
- * araç bir daha sweep'lenmez (Tracker zaten kaldırdı).
+ * Every `checkInterval` it walks the slots and reports state transitions
+ * (based on idle time) through `onStateChange`. `completed` is a terminal
+ * state — slots that enter it are no longer swept (the Tracker has already
+ * removed them).
  */
 export class Sweeper {
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -30,7 +31,7 @@ export class Sweeper {
     }
   }
 
-  /** Test helper: bir sweep döngüsünü manuel çalıştır. */
+  /** Test helper — run a single sweep cycle manually. */
   sweep(now: number): void {
     for (const [vehicleId, slot] of this.slots) {
       const idleMs = now - slot.lastIngestAt;

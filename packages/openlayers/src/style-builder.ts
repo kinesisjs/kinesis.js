@@ -9,11 +9,13 @@ import type { SpeedColorBand, VehicleStyleOptions } from './types';
 const DEFAULT_COLOR = '#3b82f6';
 
 /**
- * Yaygın vehicle styling pattern'ları için fabrika. Dönen fn'i
- * `OpenLayersAdapter({ style: ... })`'a verirsin.
+ * Factory for the common vehicle styling patterns. Pass the returned function
+ * to `OpenLayersAdapter({ style: ... })`.
  *
- * - `icon` verilirse Icon style (heading'e göre rotate, opsiyonel offset).
- * - Yoksa Circle style; `speedColorBands` varsa hıza göre renk, yoksa `defaultColor`.
+ * - With `icon`: an Icon style is produced (rotated by heading, optionally
+ *   offset by `rotationOffset`).
+ * - Without `icon`: a Circle style; colored by `speedColorBands` if provided,
+ *   otherwise by `defaultColor`.
  */
 export function createVehicleStyle(
   options: VehicleStyleOptions = {},
@@ -45,8 +47,9 @@ export function createVehicleStyle(
 }
 
 /**
- * Hıza göre renk bandı seç. Bantlar artan `max` sırasında olmalı.
- * Hız hiçbir banda denk gelmezse son bandın rengi (max'ten büyükler) veya defaultColor.
+ * Pick a color band by speed. Bands must be ordered by ascending `max`.
+ * If no band matches (speed greater than every `max`), the last band's color
+ * is used; if the list is empty, `fallback` or the default blue is returned.
  */
 export function colorForSpeed(speed: number, bands: SpeedColorBand[], fallback?: string): string {
   for (const band of bands) {

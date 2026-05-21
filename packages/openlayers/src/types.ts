@@ -4,21 +4,23 @@ import type VectorSource from 'ol/source/Vector';
 import type { TrailPoint } from '@kinesisjs/core';
 
 /**
- * Bir aracın style'ı için ya hazır bir `Style` ya da `(vehicle, id) => Style` üreteci.
- * Style fn her `updatePosition` çağrısında yeniden uygulanır (dynamic style).
+ * Either a pre-built `Style` or a `(vehicle, id) => Style` factory.
+ * When a function is provided it is re-evaluated on every `updatePosition`
+ * (dynamic style — useful for speed-banded coloring, state-driven icons, etc.).
  */
 export type VehicleStyleProvider = Style | ((vehicle: TrailPoint, vehicleId: string) => Style);
 
 export interface OpenLayersAdapterOptions {
-  /** Layer adı (debugging). Default: 'kinesis-vehicles'. */
+  /** Layer name (debugging aid). Default: 'kinesis-vehicles'. */
   layerName?: string;
 
-  /** Statik Style veya per-vehicle style üreteci. */
+  /** Static `Style` or per-vehicle style factory. */
   style?: VehicleStyleProvider;
 
   /**
-   * Mevcut bir VectorLayer'a bağla (yeni layer oluşturma).
-   * `managedFeatureIds` ile birlikte kullanılırsa diğer feature'lara dokunulmaz.
+   * Attach to an existing VectorLayer rather than creating a new one.
+   * When paired with `managedFeatureIds`, other features on that layer are
+   * left untouched.
    */
   existingLayer?: VectorLayer<VectorSource>;
 
@@ -26,16 +28,16 @@ export interface OpenLayersAdapterOptions {
   projection?: string;
 
   /**
-   * Sadece bu ID'lere sahip feature'ları yönet.
+   * Manage only features whose ids appear in this set.
    *
-   * `existingLayer` modunda kritik: aynı layer'da geofence polygon'ları,
-   * custom markerlar gibi başka feature'lar varsa adapter onlara dokunmaz.
-   * `destroy()` yalnızca bu listedeki feature'ları siler.
+   * Critical for the `existingLayer` mode: if the existing layer also holds
+   * geofence polygons, custom markers, or any other features, the adapter
+   * will not touch them. `destroy()` only removes the features listed here.
    *
-   * Belirtilmezse adapter layer'daki tüm feature'ları kendi yönettiği varsayar
-   * (yeni layer açıldığı senaryoda doğru davranış).
+   * If omitted, the adapter assumes ownership of every feature in the layer
+   * (the correct behavior when it creates the layer itself).
    *
-   * Runtime'da `setManagedIds(...)` ile güncellenebilir.
+   * Can be updated at runtime via `setManagedIds(...)`.
    */
   managedFeatureIds?: Set<string> | string[];
 
@@ -46,47 +48,48 @@ export interface OpenLayersAdapterOptions {
   trail?: TrailRenderOptions;
 
   /**
-   * Opacity uygulanan değer 0-1 arasında, vehicle `warning` state'e geçtiğinde.
-   * Sweeper warning'e geçirdiğinde marker bu opacity'ye düşer; recovery'de (ingest
-   * veya sweeper active'e döndüğünde) 1.0'a geri çıkar.
+   * Opacity (0–1) applied when a vehicle transitions to the `warning` state.
+   * The sweeper triggers the dim; the next ingest (or a sweeper-detected
+   * recovery to `active`) restores opacity to 1.
    *
-   * Belirtilmezse opacity değişmez — gap visualization opt-out kalır.
-   * Tipik değer: 0.5-0.7.
+   * If omitted, the marker's opacity is never touched on state transitions
+   * — gap visualization stays opt-out. Typical value: 0.5–0.7.
    */
   warningOpacity?: number;
 }
 
 /**
- * Trail (geride bıraktığı yol) çizimi opsiyonları. `OpenLayersAdapter` her aracın
- * son N pozisyonunu kendi ring buffer'ında tutar ve ayrı bir VectorLayer'da
- * `Feature<LineString>` olarak çizer. Marker katmanının altında kalır (zIndex < 0).
+ * Trail rendering options. The `OpenLayersAdapter` keeps a per-vehicle ring
+ * buffer of recent positions and draws each as a `Feature<LineString>` on a
+ * separate VectorLayer that sits behind the marker layer.
  *
- * Renk çözümleme sırası: explicit `color` → `TrailPoint.meta.color` (string) →
- * `defaultColor` → `'#3b82f6'`. Bu sayede demo'daki fleet renkleri otomatik
- * trail'lere yansır.
+ * Color resolution order: explicit `color` → `TrailPoint.meta.color` (string) →
+ * `defaultColor` → `'#3b82f6'`. This is how fleet-level color schemes (one
+ * color per vehicle, attached via `Position.meta`) flow automatically into
+ * the trails.
  */
 export interface TrailRenderOptions {
-  /** Trail çizimi açık mı. Opt-in için zorunlu `true`. */
+  /** Enable trail rendering. Required `true` to opt in. */
   enabled: boolean;
-  /** Ring buffer kapasitesi (vehicle başına). Default: 60. */
+  /** Ring buffer capacity per vehicle. Default: 60. */
   maxPoints?: number;
   /**
-   * Vehicle başına ardışık iki trail örneği arasında minimum ms. Tick frekansı
-   * (60 Hz) trail uzunluğunu çok çabuk tüketmesin diye throttle. Default: 100
-   * (≈10 Hz örnekleme). 0 verilirse her tick örneklenir.
+   * Minimum interval (ms) between successive trail samples per vehicle.
+   * The tick runs at ~60 Hz; without throttling, the buffer would fill in
+   * under a second. Default: 100 (≈10 Hz). Setting 0 samples on every tick.
    */
   intervalMs?: number;
-  /** Çizgi kalınlığı (piksel). Default: 3. */
+  /** Line width in pixels. Default: 3. */
   width?: number;
-  /** Çizgi alfa kanalı, 0-1. Default: 0.5. */
+  /** Line alpha channel, 0–1. Default: 0.5. */
   opacity?: number;
   /**
-   * Sabit trail rengi (CSS hex / rgb / named). Verilirse `meta.color`'ı ezer.
-   * Sadece hex (`#rrggbb` veya `#rgb`) için alfa uygulanır; diğer renklerde
-   * fonksiyon string'i olduğu gibi geri verir.
+   * Fixed trail color (CSS hex / rgb / named). Overrides `meta.color` when
+   * set. The `opacity` field is applied as alpha only for hex inputs
+   * (`#rrggbb` or `#rgb`); other forms are passed through unchanged.
    */
   color?: string;
-  /** `color` ve `meta.color` yokken kullanılan fallback. Default: '#3b82f6'. */
+  /** Fallback when neither `color` nor `meta.color` is available. Default: '#3b82f6'. */
   defaultColor?: string;
   /**
    * Trail layer z-index — advanced override for `existingLayer` mode.
@@ -103,26 +106,27 @@ export interface TrailRenderOptions {
 }
 
 export interface SpeedColorBand {
-  /** Bu hızın altında (km/h dahil) bu renk uygulanır. */
+  /** Speeds at or below this value (km/h) get the band's color. */
   max: number;
   /** CSS color (hex, rgb, named). */
   color: string;
 }
 
 export interface VehicleStyleOptions {
-  /** Icon URL. Belirtilirse Icon style, yoksa Circle style üretilir. */
+  /** Icon URL. If supplied, an Icon style is produced; otherwise a Circle style. */
   icon?: string;
   /** Icon scale. Default: 1. */
   iconScale?: number;
-  /** Icon rotation offset (derece). Default: 0. */
+  /** Icon rotation offset in degrees. Default: 0. */
   rotationOffset?: number;
-  /** Circle/Icon default rengi. Default: '#3b82f6'. */
+  /** Default Circle / Icon color. Default: '#3b82f6'. */
   defaultColor?: string;
   /**
-   * Hıza göre renk bantları. `speed <= max` ilk eşleşen banda uygulanır.
-   * Sıralı verilmeli (artan). Boş ise `defaultColor` kullanılır.
+   * Speed-band coloring. The first band whose `max` covers the speed wins.
+   * Bands must be supplied in ascending order. Empty list falls back to
+   * `defaultColor`.
    */
   speedColorBands?: SpeedColorBand[];
-  /** Circle yarıçapı. Default: 6. */
+  /** Circle radius. Default: 6. */
   circleRadius?: number;
 }

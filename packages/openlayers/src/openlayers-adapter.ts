@@ -28,17 +28,18 @@ interface TrailEntry {
 }
 
 /**
- * Kinesis.js Core'un `TrackAdapter` interface'ini OpenLayers için uygulayan adapter.
+ * OpenLayers implementation of the Kinesis.js Core `TrackAdapter` interface.
  *
- * Sorumlulukları:
- *   - Her araç için bir `Feature<Point>` lifecycle'ı (create/update/remove)
- *   - Statik veya dinamik style uygulama (her `updatePosition`'da yeniden üretilebilir)
- *   - Opsiyonel opacity güncellemesi (fade behavior için)
- *   - Opsiyonel trail rendering (geride bıraktığı yol, ayrı VectorLayer)
- *   - `managedFeatureIds` ile mevcut layer'da diğer feature'lara dokunmama
- *   - Bellek tahmini (`getMemoryEstimate`) — Tracker.getStats için
+ * Responsibilities:
+ *   - Per-vehicle `Feature<Point>` lifecycle (create / update / remove).
+ *   - Static or dynamic style application (re-evaluated on each `updatePosition`).
+ *   - Optional opacity updates (used by the Tracker's fade behavior).
+ *   - Optional trail rendering (recent-positions polyline on a separate VectorLayer).
+ *   - Respect for `managedFeatureIds` — leaves unrelated features on a shared
+ *     existing layer untouched.
+ *   - Memory estimate (`getMemoryEstimate`) surfaced through `Tracker.getStats`.
  *
- * Sorumlu olmadığı: interpolation, veri kaynağı, kullanıcı etkileşimi.
+ * Not its responsibility: interpolation, data source, user interaction.
  */
 export class OpenLayersAdapter implements TrackAdapter {
   private readonly source: VectorSource;
@@ -144,7 +145,7 @@ export class OpenLayersAdapter implements TrackAdapter {
 
     if (typeof this.options.style === 'function') {
       const newStyle = this.options.style(point, id);
-      // Fade animasyonu sırasında opacity yenilenen style'a taşınmalı
+      // During a fade animation, opacity must carry over to the refreshed style.
       const opacity = feature.get('opacity') as number | undefined;
       if (opacity !== undefined && opacity !== 1) {
         newStyle.getImage()?.setOpacity(opacity);
@@ -172,13 +173,13 @@ export class OpenLayersAdapter implements TrackAdapter {
 
   destroy(): void {
     if (this.managedIds) {
-      // existingLayer modu: sadece managed feature'ları sil, layer'ı kaldırma
+      // existingLayer mode: remove only managed features, keep the layer.
       for (const id of this.managedIds) {
         const f = this.features.get(id);
         if (f) this.source.removeFeature(f);
       }
     } else {
-      // Kendi layer'ımız ya da managed listesi yok → topyekun temizle
+      // Owned layer (or no managed list) → clear everything.
       for (const feature of this.features.values()) {
         this.source.removeFeature(feature);
       }
@@ -188,7 +189,7 @@ export class OpenLayersAdapter implements TrackAdapter {
       this.map.removeLayer(this.layer);
     }
 
-    // Trails her zaman adapter-owned; topyekun temizle.
+    // Trails are always adapter-owned — clear them in full.
     if (this.trail) {
       for (const t of this.trail.entries.values()) {
         this.trail.source.removeFeature(t.feature);
@@ -199,9 +200,10 @@ export class OpenLayersAdapter implements TrackAdapter {
   }
 
   /**
-   * Opsiyonel TrackAdapter metodu — Tracker'ın fade behavior'ı kullanır.
-   * Feature property olarak `opacity` yazılır; OL Icon/Circle Image'dan miras olduğu
-   * için `image.setOpacity` aynı anda çağrılır ve feature.changed() ile redraw tetiklenir.
+   * Optional TrackAdapter method — used by the Tracker's fade behavior.
+   * Writes `opacity` as a feature property and (since OL's Icon/Circle inherits
+   * from `Image`) calls `image.setOpacity(...)` plus `feature.changed()` to
+   * trigger a redraw on the same frame.
    */
   updateOpacity(id: string, opacity: number): void {
     const feature = this.features.get(id);
@@ -216,11 +218,13 @@ export class OpenLayersAdapter implements TrackAdapter {
   }
 
   /**
-   * Opsiyonel TrackAdapter metodu — Tracker vehicle lifecycle state değiştirdiğinde
-   * çağrılır. Feature property olarak `vehicleState` her zaman set edilir (external
-   * okuma için). `warningOpacity` config'i varsa warning'e geçince marker o opacity'ye
-   * düşer, recovery'de (active'e dönünce) 1.0'a geri çıkar. `stale`/`completed`
-   * state'leri burada handle edilmez — hemen `removeVehicle` izler.
+   * Optional TrackAdapter method — invoked by the Tracker whenever a vehicle's
+   * lifecycle state changes. The `vehicleState` feature property is always
+   * written (useful for external readers — popups, debug panels, custom
+   * styles). When `warningOpacity` is configured, the marker dims to that
+   * value on entering `warning` and restores to 1 on recovery to `active`.
+   * `stale` / `completed` are no-ops here — both are immediately followed by
+   * `removeVehicle`.
    */
   setVehicleState(id: string, state: VehicleState): void {
     const feature = this.features.get(id);
@@ -237,8 +241,9 @@ export class OpenLayersAdapter implements TrackAdapter {
   }
 
   /**
-   * Opsiyonel TrackAdapter metodu — Tracker.getStats memoryBreakdown için.
-   * Feature başına ~256B, trail başına ~64B + 16B/coord tahmini.
+   * Optional TrackAdapter method — surfaces a per-adapter byte estimate inside
+   * `Tracker.getStats().memoryBreakdown`. Rough numbers: ~256 B per vehicle
+   * feature, ~64 B + 16 B per coordinate for a trail entry.
    */
   getMemoryEstimate(): number {
     let bytes = this.features.size * 256;
@@ -252,17 +257,17 @@ export class OpenLayersAdapter implements TrackAdapter {
 
   // ─── Public utilities ─────────────────────────────────────────────────
 
-  /** Bir feature'ı id ile getir (click handler, custom interaction için). */
+  /** Look up a feature by id — handy for click handlers and custom interactions. */
   getFeature(vehicleId: string): Feature<Point> | undefined {
     return this.features.get(vehicleId);
   }
 
-  /** Yönetilen tüm feature'ların shallow kopyası. */
+  /** Shallow copy of every managed feature. */
   getAllFeatures(): Map<string, Feature<Point>> {
     return new Map(this.features);
   }
 
-  /** Managed ID listesini runtime'da değiştir. */
+  /** Update the managed-id allow-list at runtime. */
   setManagedIds(ids: Set<string> | string[] | null): void {
     this.managedIds = ids === null ? null : new Set(ids);
   }
@@ -336,9 +341,9 @@ function resolveTrailOptions(opts: TrailRenderOptions): ResolvedTrailOptions {
 }
 
 /**
- * Hex (`#rrggbb` veya `#rgb`) renge alfa uygular ve `rgba(...)` döner.
- * Diğer formatları (named, rgb(), rgba()) olduğu gibi geçirir — kullanıcı
- * istediği şekilde alfayı zaten verdi varsayılır.
+ * Applies alpha to a hex color (`#rrggbb` or `#rgb`) and returns an `rgba(...)`
+ * string. Non-hex inputs (named, `rgb()`, `rgba()`) are passed through unchanged
+ * — the caller is assumed to have already encoded alpha as needed.
  */
 function applyAlpha(color: string, alpha: number): string {
   if (!color.startsWith('#')) return color;

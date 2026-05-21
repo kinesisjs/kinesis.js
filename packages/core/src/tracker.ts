@@ -18,17 +18,17 @@ import type {
 } from './types';
 
 /**
- * Kinesis.js'in ana orkestratör sınıfı.
+ * Top-level orchestrator for Kinesis.js.
  *
- * Sorumlulukları:
- *   - Pozisyon ingest (validation + throttling + initial position behavior)
- *   - Tick döngüsü (rAF clock üzerinden, sanity check'li interpolation)
- *   - Multi-state vehicle lifecycle (sweeper ile entegre)
- *   - Adapter ve interpolator çağrılarını izole etme (error-as-event)
- *   - Performance telemetri (p50/p95/p99 ring buffer, dropped tick, ingest rate)
+ * Responsibilities:
+ *   - Position ingest (validation + throttling + initial-position behavior).
+ *   - Tick loop (rAF-driven clock, sanity-checked interpolation).
+ *   - Multi-state vehicle lifecycle (integrated with the Sweeper).
+ *   - Isolating adapter / interpolator calls (errors surface as events).
+ *   - Performance telemetry (p50/p95/p99 ring buffer, dropped ticks, ingest rate).
  *
- * Sorumlu olmadığı: harita feature lifecycle (adapter işi), framework reactivity
- * (wrapper işi), veri kaynağı (kullanıcı).
+ * Not its responsibility: map feature lifecycle (adapter), framework reactivity
+ * (wrapper), data source (consumer).
  */
 export class Tracker {
   private static readonly TICK_HISTORY_SIZE = 100;
@@ -54,9 +54,9 @@ export class Tracker {
 
   constructor(private readonly options: TrackerOptions) {
     this.interpolator = this.buildInterpolator();
-    // Clock callback'ten gelen performance.now()-bazlı zamanı yutuyoruz; tick içinde
-    // Date.now() kullanıyoruz çünkü slot.receivedAt da Date.now() bazlı — iki zaman
-    // bazını karıştırmak elapsed/period hesabını bozar.
+    // We swallow the performance.now()-based timestamp the Clock hands back and
+    // rely on Date.now() inside tick() instead, because slot.receivedAt is also
+    // Date.now()-based — mixing the two clocks would corrupt elapsed/period math.
     this.clock = new Clock(() => this.tick());
     this.sweeper = new Sweeper(
       this.slots,
@@ -71,8 +71,10 @@ export class Tracker {
   // ─── Public API ───────────────────────────────────────────────────────
 
   /**
-   * Pozisyonları sisteme akıt. Validation, throttling ve initialPositionBehavior
-   * uygulanır. Slot yoksa yaratılır; varsa ring slot (previous = current; current = yeni).
+   * Feed positions into the system. Validation, throttling, and
+   * `initialPositionBehavior` are applied. A slot is created on first sight;
+   * subsequent ingests rotate the ring slot (`previous = current`,
+   * `current = new`).
    */
   ingest(positions: Position[]): void {
     const start = monotonicNow();
@@ -92,9 +94,9 @@ export class Tracker {
         continue;
       }
 
-      // wait-for-second: ikinci çağrı geldi → throttle'dan bağımsız attach yap.
-      // Throttle sadece veri güncellemesini (previous/current shift) baskılar,
-      // side-effect'leri (attach, state recover) değil.
+      // wait-for-second: the second ingest has arrived → attach now, regardless
+      // of throttle. The throttle only suppresses the data update (previous /
+      // current shift), not side effects (attach, state recovery).
       if (!existing.isAttached) {
         this.attachToAdapter(pos.id, existing);
       }
@@ -182,8 +184,9 @@ export class Tracker {
   }
 
   /**
-   * Bir aracı 'completed' olarak işaretle (vardiya bitişi gibi planlı son için).
-   * Feature haritadan kaldırılır, 'vehiclecompleted' event'i çıkar.
+   * Mark a vehicle as 'completed' (planned end of a shift, finished delivery,
+   * etc.). The feature is removed from the map and a 'vehiclecompleted' event
+   * is emitted.
    */
   markCompleted(vehicleId: string): boolean {
     const slot = this.slots.get(vehicleId);
@@ -220,12 +223,12 @@ export class Tracker {
     return Object.freeze({ ...this.stats });
   }
 
-  /** Test helper: bir tick'i manuel çalıştır. */
+  /** Test helper: run a single tick manually. */
   tickOnce(): void {
     this.tick();
   }
 
-  // ─── Tick döngüsü ─────────────────────────────────────────────────────
+  // ─── Tick loop ────────────────────────────────────────────────────────
 
   private tick(): void {
     const tickStart = monotonicNow();
@@ -243,15 +246,16 @@ export class Tracker {
 
       const period = slot.current.receivedAt - slot.previous.receivedAt;
 
-      // Same-millisecond / out-of-order ingests: zaman sinyali yok, direkt current'a snap.
-      // Bu, period=0 → division-by-zero ve sanity check false-positive'leri önler.
+      // Same-millisecond / out-of-order ingests carry no time signal — snap to
+      // current. This also avoids a period=0 division-by-zero and spurious
+      // sanity-check positives.
       if (period <= 0) {
         this.safeUpdate(vehicleId, slot.current);
         activeCount++;
         continue;
       }
 
-      // Mesafe sanity check (anomalous jump → fade)
+      // Distance sanity check (anomalous jump → fade).
       const distance = haversineDistance(slot.previous, slot.current);
       const speedMs = ((slot.previous.speed ?? 50) * 1000) / 3600;
       const maxRealistic = speedMs * (period / 1000) * 1.5;
@@ -261,7 +265,7 @@ export class Tracker {
         continue;
       }
 
-      // Heading sanity check (keskin dönüş → tek tick cubic)
+      // Heading sanity check (sharp turn → single-tick cubic easing).
       let forceCubic = false;
       if (
         slot.previous.heading !== undefined &&
@@ -349,7 +353,7 @@ export class Tracker {
         this.animateOpacity(pos.id, 0, 1, this.options.fadeAnimation?.duration ?? 800);
       }
     }
-    // 'wait-for-second' → addVehicle ikinci ingest'te çağrılır
+    // 'wait-for-second' → addVehicle is deferred to the second ingest.
   }
 
   private attachToAdapter(id: string, slot: VehicleSlot): void {
@@ -477,11 +481,11 @@ export class Tracker {
     if (typeof requestAnimationFrame === 'function') {
       requestAnimationFrame(step);
     } else {
-      // Node ortamı (test): tek bir snapshot uygula
+      // Node test environment — no rAF; apply the final value in one shot.
       try {
         update.call(this.options.adapter, id, to);
       } catch {
-        // sessizce yut — test ortamında raf yok
+        // Swallow silently — no rAF to drive the animation anyway.
       }
     }
   }

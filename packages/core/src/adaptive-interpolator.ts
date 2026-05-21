@@ -2,21 +2,23 @@ import { Interpolator } from './interpolator';
 import type { AdaptiveBehavior, AdaptiveOptions, TrailPoint } from './types';
 
 /**
- * Periyot-bilinçli karar motoru. Her tick'te `to.receivedAt - from.receivedAt`
- * periyodu hesaplanır ve 4 zon arasından biri seçilir:
+ * Period-aware decision engine. On every tick the period
+ * `to.receivedAt - from.receivedAt` is computed and one of four zones is
+ * selected:
  *
- *   periyot < minPeriodMs            → 'none'   (default min: 500 ms)
- *   minPeriodMs ≤ periyot ≤ maxPeriodMs → 'linear'  (default max: 8000 ms)
- *   maxPeriodMs < periyot ≤ fadeThresholdMs → 'fade'    (default fade: 15000 ms)
- *   periyot > snapThresholdMs        → 'snap'   (default snap: 15000 ms)
+ *   period < minPeriodMs                  → 'none'   (default min: 500 ms)
+ *   minPeriodMs ≤ period ≤ maxPeriodMs    → 'linear' (default max: 8000 ms)
+ *   maxPeriodMs < period ≤ fadeThresholdMs → 'fade'  (default fade: 15000 ms)
+ *   period > snapThresholdMs               → 'snap'  (default snap: 15000 ms)
  *
- * `minPeriodMs` 1000 → 500 değişikliği v0.1.2'de yapıldı: yaygın 1 Hz GPS
- * feed'lerin jitter'la 1000 ms boundary'sinin altına düşüp 'none' zone'una
- * teleport olması engellendi. Sub-saniyelik feed kullananlar 'none'
- * davranışını opt-in `minPeriodMs: 100` (vb.) ile geri alabilir.
+ * `minPeriodMs` dropped from 1000 to 500 in v0.1.2: common 1 Hz GPS feeds
+ * routinely jitter under the 1000 ms boundary, which used to teleport the
+ * marker through the 'none' zone. Sub-second feeds can opt back into the
+ * 'none' behavior by setting e.g. `minPeriodMs: 100`.
  *
- * `compute()` matematiksel pozisyonu döner; **fade animasyonunun kendisi**
- * (opacity 1→0, snap, 0→1) Tracker tarafında sürülür (adapter.updateOpacity üzerinden).
+ * `compute()` returns the math-only interpolated position; the **fade
+ * animation itself** (opacity 1→0, snap, 0→1) is driven by the Tracker via
+ * `adapter.updateOpacity`.
  */
 export class AdaptiveInterpolator {
   private readonly linear = new Interpolator('linear');
@@ -24,7 +26,7 @@ export class AdaptiveInterpolator {
 
   constructor(private readonly opts: AdaptiveOptions = {}) {}
 
-  /** Verilen periyot için davranış zonu. */
+  /** Behavior zone for a given period. */
   classify(periodMs: number): AdaptiveBehavior {
     const min = this.opts.minPeriodMs ?? 500;
     const max = this.opts.maxPeriodMs ?? 8000;
@@ -38,8 +40,8 @@ export class AdaptiveInterpolator {
   }
 
   /**
-   * Tracker tarafından çağrılır. Built-in Interpolator ile aynı 5-parametreli
-   * imza için: `(from, to, ratio, shortestArcHeading?, forceCubic?)`.
+   * Called by the Tracker. Same 5-parameter signature as the built-in
+   * Interpolator: `(from, to, ratio, shortestArcHeading?, forceCubic?)`.
    */
   compute(
     from: TrailPoint,
@@ -55,7 +57,7 @@ export class AdaptiveInterpolator {
     return this.linear.compute(from, to, ratio, shortestArcHeading);
   }
 
-  /** Tracker'a "bu segment için fade davranışı tetikle" sinyali. */
+  /** Signal to the Tracker: "trigger fade behavior for this segment". */
   shouldFade(periodMs: number): boolean {
     return this.classify(periodMs) === 'fade';
   }

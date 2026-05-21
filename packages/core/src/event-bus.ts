@@ -1,11 +1,11 @@
 /**
- * Tipli, minimal allocation event emitter. Mitt benzeri; bağımlılık yok.
+ * Typed, minimal-allocation event emitter. Similar to mitt; no dependencies.
  */
 export class EventBus<TEventMap extends Record<string, unknown>> {
   private readonly handlers = new Map<keyof TEventMap, Set<(payload: unknown) => void>>();
 
   /**
-   * Dinleyici ekle. Dönen fonksiyon çağrıldığında unsubscribe yapılır.
+   * Register a listener. The returned function unsubscribes when called.
    */
   on<K extends keyof TEventMap>(event: K, handler: (payload: TEventMap[K]) => void): () => void {
     let set = this.handlers.get(event);
@@ -20,7 +20,7 @@ export class EventBus<TEventMap extends Record<string, unknown>> {
   }
 
   /**
-   * Event yayınla. void-payload event'ler için payload omit edilebilir.
+   * Emit an event. Payload is optional for void-payload events.
    */
   emit<K extends keyof TEventMap>(event: K, payload?: TEventMap[K]): void {
     const set = this.handlers.get(event);
@@ -30,12 +30,12 @@ export class EventBus<TEventMap extends Record<string, unknown>> {
     }
   }
 
-  /** Tüm listener'ları kaldır. `destroy()` akışında çağrılır. */
+  /** Drop every listener. Called from `Tracker.destroy()`. */
   removeAllListeners(): void {
     this.handlers.clear();
   }
 
-  /** Bir event için kayıtlı handler sayısı (debug + test). */
+  /** Listener count for an event (debug + tests). */
   listenerCount<K extends keyof TEventMap>(event: K): number {
     return this.handlers.get(event)?.size ?? 0;
   }

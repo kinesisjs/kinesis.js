@@ -3,10 +3,10 @@ import type { TrailPoint } from './types';
 const EARTH_RADIUS_M = 6_371_000;
 
 /**
- * İki nokta arası yaklaşık mesafe (Haversine formülü).
- * Tick döngüsünde sıkça çağrıldığı için minimum trigonometri kullanılır.
+ * Approximate distance between two points (Haversine formula).
+ * Called frequently inside the tick loop — kept to the minimum trig needed.
  *
- * @returns metre
+ * @returns meters
  */
 export function haversineDistance(
   a: Pick<TrailPoint, 'lat' | 'lng'>,
@@ -21,18 +21,18 @@ export function haversineDistance(
 }
 
 /**
- * İki heading değeri (derece) arasındaki **signed** en kısa açısal mesafe.
- * 350° ile 10° arası `+20`° döner (`-340`° değil).
+ * **Signed** shortest angular distance between two heading values (degrees).
+ * For example, 350° → 10° returns `+20°` (not `-340°`).
  *
- * @returns -180..+180 derece (b - a yönünde)
+ * @returns -180..+180 degrees, signed in the direction `b - a`.
  */
 export function shortestArcDiff(a: number, b: number): number {
   return ((b - a + 540) % 360) - 180;
 }
 
 /**
- * Allocation-az linear interpolation. Async CustomInterpolator fallback'inde ve
- * AdaptiveInterpolator 'linear' zone'unda kullanılır.
+ * Low-allocation linear interpolation. Used as the async CustomInterpolator
+ * fallback and as the body of the AdaptiveInterpolator's `linear` zone.
  */
 export function linearLerp(
   from: TrailPoint,

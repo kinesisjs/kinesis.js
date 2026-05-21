@@ -30,7 +30,8 @@ import type {
 import { bindPositions } from './kinesis-tracker.factory';
 
 /**
- * Tek satır setup: host element'e OpenLayers Map + Kinesis.js Tracker bağlar.
+ * One-line setup: attaches an OpenLayers Map + a Kinesis.js Tracker to the
+ * host element.
  *
  * @example
  * ```ts
@@ -43,8 +44,8 @@ import { bindPositions } from './kinesis-tracker.factory';
  * }
  * ```
  *
- * Daha detaylı kontrol için (kendi map'inle çalışma, custom layer vb.) bkz.
- * `kinesisTracker(...)` factory'si.
+ * For finer control (your own OL Map instance, extra layers, etc.) see the
+ * `kinesisTracker(...)` factory.
  */
 @Directive({
   selector: '[kinesisMap]',
@@ -56,80 +57,83 @@ export class KinesisMapDirective implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
 
-  /** Pozisyon kaynağı: Signal<Position[]> veya Observable<Position[]>. */
+  /** Position source: `Signal<Position[]>` or `Observable<Position[]>`. */
   @Input({ required: true }) positions!: Signal<Position[]> | Observable<Position[]>;
 
-  /** Haritanın başlangıç merkezi (lng, lat). Default: İstanbul. */
+  /** Initial map center (lng, lat). Default: Istanbul. */
   @Input() center: [number, number] = [29.0, 41.0];
 
-  /** Haritanın başlangıç zoom seviyesi. Default: 10. */
+  /** Initial zoom level. Default: 10. */
   @Input() zoom = 10;
 
   /**
-   * İnterpolation davranışı. PRD §7.1 detayları.
-   * Default: 'linear'. 'adaptive' önerilen (periyot-bilinçli).
+   * Interpolation behavior — see PRD §7.1.
+   * Default: 'linear'. 'adaptive' is the recommended period-aware mode.
    */
   @Input() interpolation: TrackerOptions['interpolation'] = 'linear';
 
-  /** İki nokta arası bu süreden büyükse interpolation atlanır (ms). Default: 30000. */
+  /** If the gap between two points exceeds this (ms), interpolation is skipped. Default: 30000. */
   @Input() maxInterpolationGap = 30_000;
 
-  /** Stale araç eşiği (ms). Default: 600000 (10 dakika). */
+  /** Stale vehicle threshold (ms). Default: 600000 (10 minutes). */
   @Input() staleThreshold = 600_000;
 
-  /** Warning state eşiği (ms). Default: 60000. */
+  /** Warning state threshold (ms). Default: 60000. */
   @Input() warningThreshold = 60_000;
 
-  /** Aynı vehicleId için minimum ingest aralığı (ms). Default: 100. */
+  /** Minimum ingest interval per vehicleId (ms). Default: 100. */
   @Input() ingestThrottle = 100;
 
   /**
-   * Render-tarafı interpolation buffer (ms). 1 Hz GPS feed için 1000 idealdir
-   * (default). 0 = legacy snap-on-ingest davranışı. v0.1.1+ için detay:
-   * `TrackerOptions.renderLagMs` JSDoc'u.
+   * Render-side interpolation buffer (ms). For a 1 Hz GPS feed, 1000 is the
+   * sweet spot (default). 0 disables the buffer (legacy snap-on-ingest
+   * behavior). See `TrackerOptions.renderLagMs` for details.
    */
   @Input() renderLagMs?: number;
 
   /**
-   * Adaptive interpolation zone eşikleri. `interpolation: 'adaptive'` kullanıldığında
-   * geçerli. Default eşikler için `AdaptiveOptions` bk.
-   * Örn: `[adaptive]="{ minPeriodMs: 200 }"` çok hızlı feed'ler için.
+   * Adaptive interpolation zone thresholds — used only when
+   * `interpolation: 'adaptive'`. See `AdaptiveOptions` for the defaults.
+   * Example: `[adaptive]="{ minPeriodMs: 200 }"` for very high-frequency feeds.
    */
   @Input() adaptive?: AdaptiveOptions;
 
   /**
-   * Adaptive 'fade' zone tetiklendiğinde animasyon parametreleri. Default:
-   * duration 800ms, easing 'ease-in-out'.
+   * Animation parameters used in the adaptive 'fade' zone. Defaults:
+   * `duration: 800`, `easing: 'ease-in-out'`.
    */
   @Input() fadeAnimation?: FadeAnimationOptions;
 
   /**
-   * İlk pozisyon geldiğinde davranış: `'show-immediately'` (default),
-   * `'wait-for-second'` (iki nokta gelene kadar haritada görünmez), veya
-   * `'fade-in'` (opacity 0→1 ile yumuşak giriş).
+   * What happens when the first position for a vehicle arrives:
+   * `'show-immediately'` (default), `'wait-for-second'` (the marker doesn't
+   * appear until a second point lands), or `'fade-in'` (opacity 0→1).
    */
   @Input() initialPositionBehavior?: InitialPositionBehavior;
 
-  /** Style provider — bkz. `createVehicleStyle()` helper'ı. */
+  /** Style provider — see the `createVehicleStyle()` helper. */
   @Input() vehicleStyle?: VehicleStyleProvider;
 
   /**
-   * Trail rendering — geride bıraktığı yol çizgisi (ayrı OL VectorLayer, marker'ların
-   * altında). Opt-in: `[trail]="{ enabled: true }"`. Detaylar için
-   * `@kinesisjs/openlayers` `TrailRenderOptions`'a bk.
+   * Trail rendering — fading polyline behind each marker on a separate OL
+   * VectorLayer that sits below the vehicle layer. Opt in with
+   * `[trail]="{ enabled: true }"`. Full option surface lives in
+   * `@kinesisjs/openlayers` `TrailRenderOptions`.
    */
   @Input() trail?: TrailRenderOptions;
 
   /**
-   * Gap-visualization: vehicle `warning` state'e geçtiğinde marker bu opacity'ye
-   * (0-1) düşer; recovery (ingest veya sweeper active) ile 1.0'a döner. Belirtilmezse
-   * opacity'ye dokunulmaz (backward compatible).
+   * Gap visualization: when a vehicle transitions to `warning`, the marker
+   * dims to this opacity (0–1). It recovers to 1.0 on the next ingest or on
+   * a sweeper-detected recovery to `active`. If omitted, opacity stays
+   * untouched (backward compatible).
    *
-   * Tipik değer: 0.5-0.7. `OpenLayersAdapterOptions.warningOpacity`'ye eşdeğer.
+   * Typical value: 0.5–0.7. Equivalent to
+   * `OpenLayersAdapterOptions.warningOpacity`.
    */
   @Input() warningOpacity?: number;
 
-  /** Hangi adapter? Şu an sadece 'openlayers'. v0.3'te 'leaflet'. */
+  /** Adapter to use. Currently only 'openlayers'; 'leaflet' is planned for v0.3. */
   @Input() adapter = 'openlayers' as const;
 
   private map?: OLMap;
@@ -165,12 +169,13 @@ export class KinesisMapDirective implements OnInit {
     this.destroyRef.onDestroy(() => this.cleanup());
   }
 
-  /** Public: Tracker instance — getStats, manuel removeVehicle, event subscribe için. */
+  /** Public: the underlying `Tracker` — for `getStats()`, manual `removeVehicle`,
+   *  event subscriptions, etc. */
   getTracker(): Tracker | undefined {
     return this.trackerInstance;
   }
 
-  /** Public: OL Map instance — custom layer/control/interaction eklemek için. */
+  /** Public: the OL Map instance — for adding custom layers, controls, or interactions. */
   getMap(): OLMap | undefined {
     return this.map;
   }

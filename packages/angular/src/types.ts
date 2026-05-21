@@ -5,25 +5,26 @@ import type { OpenLayersAdapterOptions } from '@kinesisjs/openlayers';
 import type { Position, TrackerOptions } from '@kinesisjs/core';
 
 /**
- * Programmatik `kinesisTracker(...)` factory'sinin konfigürasyonu.
- * Kullanıcı kendi OL Map'ini sağlar — directive'i bypass eden gelişmiş senaryo.
+ * Configuration for the programmatic `kinesisTracker(...)` factory.
+ * The caller supplies their own OpenLayers Map — the advanced path that
+ * bypasses the `[kinesisMap]` directive.
  */
 export interface KinesisTrackerConfig {
-  /** Kullanıcının yarattığı OpenLayers Map. */
+  /** OpenLayers Map instance owned by the caller. */
   map: OLMap;
 
-  /** Pozisyon kaynağı — Signal veya Observable kabul edilir. */
+  /** Position source — either a Signal or an Observable. */
   positions: Signal<Position[]> | Observable<Position[]>;
 
   /**
-   * Map adapter seçimi. Şu an sadece 'openlayers'.
-   * v0.3'te 'leaflet' eklenecek.
+   * Map adapter selector. Currently only 'openlayers'; 'leaflet' is planned
+   * for v0.3.
    */
   adapter?: 'openlayers';
 
-  /** Tracker'a iletilecek opsiyonlar (interpolation, threshold'lar vb.). */
+  /** Tracker options (interpolation, thresholds, etc.). */
   trackerOptions?: Partial<Omit<TrackerOptions, 'adapter'>>;
 
-  /** Adapter'a iletilecek opsiyonlar (style, managedFeatureIds vb.). */
+  /** Adapter options (style, managedFeatureIds, etc.). */
   adapterOptions?: OpenLayersAdapterOptions;
 }

@@ -1,9 +1,10 @@
 /**
- * rAF tabanlı tick üretici. `setInterval` yerine `requestAnimationFrame` kullanır
- * çünkü tab background'a düştüğünde rAF temiz durur; setInterval birikmiş tick'leri
- * geri geldiğinde "catchup" yapar ve görsel sıçramaya neden olur.
+ * rAF-based tick producer. Uses `requestAnimationFrame` rather than
+ * `setInterval` because rAF pauses cleanly when the tab is backgrounded;
+ * `setInterval` accumulates pending ticks and "catches up" on return, which
+ * produces visible jumps in the rendered position.
  *
- * FPS bilgisi saniyede bir güncellenir.
+ * FPS is recomputed once per second.
  */
 export class Clock {
   private rafId: number | null = null;
@@ -34,7 +35,7 @@ export class Clock {
     return this.fps;
   }
 
-  /** Test/SSR helper: bir tick'i manuel çalıştır (yalnızca testlerde). */
+  /** Test/SSR helper — run a single tick manually (intended for tests only). */
   tickOnce(): void {
     this.loop();
   }
@@ -58,7 +59,8 @@ export class Clock {
     if (typeof requestAnimationFrame === 'function') {
       this.rafId = requestAnimationFrame(this.loop);
     }
-    // Node.js ortamı: rAF yoksa scheduleNext bir no-op. Test ortamında tickOnce() kullanılır.
+    // Node.js environment without rAF: scheduleNext is a no-op; tests call
+    // `tickOnce()` directly.
   }
 }
 

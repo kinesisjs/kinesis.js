@@ -13,8 +13,9 @@ import type OLMap from 'ol/Map';
 import type { TrailPoint } from '@kinesisjs/core';
 
 /**
- * Minimal Map mock — adapter sadece `addLayer` ve `removeLayer` çağırır.
- * jsdom + tam Map kurulumu (canvas, ResizeObserver, vb.) yerine pragmatik fake.
+ * Minimal Map mock — the adapter only calls `addLayer` / `removeLayer`.
+ * Pragmatic fake instead of standing up a full jsdom + OL Map (canvas,
+ * ResizeObserver, etc.).
  */
 class FakeMap {
   layers: VectorLayer<VectorSource>[] = [];

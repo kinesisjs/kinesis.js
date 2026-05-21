@@ -21,7 +21,7 @@ const to: TrailPoint = {
   heading: 95,
 };
 
-describe('Interpolator.compute (allocation-az tek-tick path)', () => {
+describe('Interpolator.compute (low-allocation single-tick path)', () => {
   const linear = new Interpolator('linear');
   const cubic = new Interpolator('cubic');
   const geodesic = new Interpolator('geodesic');
@@ -48,8 +48,8 @@ describe('Interpolator.compute (allocation-az tek-tick path)', () => {
   });
 });
 
-describe('math-utils — helpers (route-aware + predict paketleri tarafından da kullanılır)', () => {
-  bench('haversineDistance (yakın noktalar ~140m)', () => {
+describe('math-utils — helpers (also used by route-aware + predict packages)', () => {
+  bench('haversineDistance (close points, ~140 m apart)', () => {
     haversineDistance(from, to);
   });
 

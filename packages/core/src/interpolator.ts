@@ -2,16 +2,17 @@ import { linearLerp, shortestArcDiff } from './math-utils';
 import type { InterpolationMode, TrailPoint } from './types';
 
 /**
- * Built-in interpolation modlarını uygulayan matematik motoru.
+ * Math engine that implements the built-in interpolation modes.
  *
- * Tracker'ın `tick()` döngüsü her frame'de bu sınıfı çağırır; allocation minimum.
+ * Called by `Tracker.tick()` every frame — allocation is kept minimal.
  */
 export class Interpolator {
   constructor(private readonly mode: InterpolationMode) {}
 
   /**
-   * `forceCubic`: Tracker'ın heading sanity check'i keskin dönüş tespit ettiğinde
-   * `true` iletir; bu tek tick için cubic kullanılır (mode = 'linear' olsa bile).
+   * `forceCubic`: passed as `true` by the Tracker when its heading sanity
+   * check detects a sharp turn. That single tick uses cubic easing even if
+   * the mode is otherwise `'linear'`.
    */
   compute(
     from: TrailPoint,
@@ -36,7 +37,7 @@ export class Interpolator {
   }
 
   private cubic(from: TrailPoint, to: TrailPoint, ratio: number, shortestArc: boolean): TrailPoint {
-    // Smoothstep easing — daha pürüzsüz başla/dur
+    // Smoothstep easing — gentler start/stop.
     const t = ratio * ratio * (3 - 2 * ratio);
     return linearLerp(from, to, t, shortestArc);
   }

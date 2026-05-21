@@ -1,45 +1,47 @@
 /**
- * Kullanıcının kütüphaneye verdiği ham pozisyon verisi.
+ * Raw position payload supplied by the consumer.
  */
 export interface Position {
-  /** Araç benzersiz tanımlayıcısı (örn. plaka, ID). */
+  /** Unique vehicle identifier (e.g. plate, internal ID). */
   id: string;
-  /** Boylam (longitude), WGS84. */
+  /** Longitude in WGS84. */
   lng: number;
-  /** Enlem (latitude), WGS84. */
+  /** Latitude in WGS84. */
   lat: number;
-  /** Sunucudan gelen timestamp (epoch ms). Yoksa ingest sırasında atanır. */
+  /** Server-side timestamp (epoch ms). Filled in during ingest if absent. */
   timestamp?: number;
-  /** Hız (km/h, opsiyonel). */
+  /** Speed in km/h (optional). */
   speed?: number;
-  /** Yön (0-360 derece, opsiyonel). */
+  /** Heading in degrees, 0–360 (optional). */
   heading?: number;
-  /** Kullanıcıya özel meta veri. */
+  /** Consumer-defined metadata. */
   meta?: Record<string, unknown>;
 }
 
 /**
- * Kütüphanenin iç buffer'ında tutulan zenginleştirilmiş pozisyon.
+ * Position enriched with internal bookkeeping; what the library keeps in its
+ * per-vehicle ring buffer.
  */
 export interface TrailPoint {
   lng: number;
   lat: number;
-  /** Pozisyon zamanı (epoch ms). */
+  /** Data timestamp (epoch ms). */
   ts: number;
   speed?: number;
   heading?: number;
-  /** İstemcide alındığı zaman (epoch ms). */
+  /** When the client received the position (epoch ms). */
   receivedAt: number;
   meta?: Record<string, unknown>;
 }
 
 /**
- * Bir aracın sweeper-tarafından bilinen state'i.
+ * Sweeper-tracked lifecycle state of a vehicle.
  *
- * - 'active'    : Son ingest yakın zamanda (idle < warningThreshold).
- * - 'warning'   : Veri gelmiyor ama henüz stale değil; feature haritadan KALDIRILMAZ.
- * - 'stale'     : staleThreshold aşıldı; adapter.removeVehicle çağrılır.
- * - 'completed' : `tracker.markCompleted(id)` ile manuel işaretlendi.
+ * - 'active'    : Last ingest is recent (idle < warningThreshold).
+ * - 'warning'   : Data has stopped arriving but the slot isn't stale yet; the
+ *                 feature stays on the map.
+ * - 'stale'     : staleThreshold exceeded; adapter.removeVehicle is invoked.
+ * - 'completed' : Manually marked via `tracker.markCompleted(id)`.
  */
 export type VehicleState = 'active' | 'warning' | 'stale' | 'completed';
 
@@ -51,24 +53,25 @@ export interface SweepResult {
 }
 
 /**
- * Her araç için tutulan sabit boyutlu slot (ring pattern).
+ * Fixed-size per-vehicle slot (ring pattern).
  */
 export interface VehicleSlot {
   previous: TrailPoint | null;
   current: TrailPoint | null;
   lastIngestAt: number;
   state: VehicleState;
-  /** Adapter.addVehicle çağrıldı mı? `wait-for-second` modu için kritik. */
+  /** Whether `Adapter.addVehicle` has been called yet — critical for the
+   *  `wait-for-second` initial-position behavior. */
   isAttached: boolean;
 }
 
 /**
- * İlk pozisyon geldiğinde davranış.
+ * Behavior when the very first position for a vehicle arrives.
  */
 export type InitialPositionBehavior = 'show-immediately' | 'wait-for-second' | 'fade-in';
 
 /**
- * Built-in interpolation modları (custom + 'adaptive' hariç).
+ * Built-in interpolation modes (excluding custom interpolators and 'adaptive').
  */
 export type InterpolationMode = 'linear' | 'cubic' | 'geodesic' | 'none';
 
@@ -78,7 +81,7 @@ export interface InterpolationOptions {
 }
 
 /**
- * Kullanıcı kendi interpolation mantığını yazabilir (route-aware, ML vb.).
+ * User-supplied interpolation logic (route-aware, ML, dead-reckoning, etc.).
  */
 export interface CustomInterpolator {
   compute(
@@ -118,87 +121,90 @@ export interface TrackerError {
 }
 
 export interface FadeAnimationOptions {
-  /** Animasyon süresi (ms). Default: 800. */
+  /** Animation duration in ms. Default: 800. */
   duration?: number;
-  /** Easing fonksiyonu. Default: 'ease-in-out'. */
+  /** Easing function. Default: 'ease-in-out'. */
   easing?: 'linear' | 'ease-in-out';
 }
 
 /**
- * Tracker konfigürasyonu.
+ * Tracker configuration.
  */
 export interface TrackerOptions {
   /**
-   * İnterpolation davranışı.
-   * - 'linear' (default): Düz çizgi
-   * - 'cubic'           : Smoothstep easing
-   * - 'geodesic'        : Great-circle (gemi/uçak)
-   * - 'none'            : Direkt setCoordinates
-   * - 'adaptive'        : Periyot-bilinçli (none/linear/fade/snap) — önerilen
-   * - CustomInterpolator: Kullanıcı sağlayıcısı
+   * Interpolation behavior.
+   * - 'linear' (default): Straight-line lerp.
+   * - 'cubic'           : Smoothstep easing.
+   * - 'geodesic'        : Great-circle arc (ships, aircraft).
+   * - 'none'            : Direct `setCoordinates`, no interpolation.
+   * - 'adaptive'        : Period-aware (none / linear / fade / snap) — recommended.
+   * - CustomInterpolator: User-supplied implementation.
    */
   interpolation?: InterpolationMode | 'adaptive' | CustomInterpolator;
 
-  /** 'adaptive' modu eşikleri. */
+  /** Thresholds for the 'adaptive' mode. */
   adaptive?: AdaptiveOptions;
 
-  /** Fade animasyon ayarları (fade behavior + 'fade-in' initialPositionBehavior). */
+  /** Fade animation settings (fade behavior + 'fade-in' initialPositionBehavior). */
   fadeAnimation?: FadeAnimationOptions;
 
   /**
-   * İki nokta arası bu süreden büyükse standart interpolation atlanır.
-   * Adaptive mod kendi eşiklerini kullanır.
-   * Default: 30000 (30 saniye)
+   * If the gap between two points exceeds this value, the standard
+   * interpolation is skipped. Adaptive mode uses its own zone thresholds.
+   * Default: 30000 (30 seconds).
    */
   maxInterpolationGap?: number;
 
   /**
-   * Veri gelmeyen araç bu süreden sonra 'warning' state'ine geçer.
-   * Default: 60000 (60 saniye)
+   * A vehicle transitions to 'warning' state after this much idle time.
+   * Default: 60000 (60 seconds).
    */
   warningThreshold?: number;
 
   /**
-   * Veri gelmeyen araç bu süreden sonra 'stale' kabul edilir, kaldırılır.
-   * Default: 600000 (10 dakika)
+   * A vehicle is considered 'stale' after this much idle time and gets removed.
+   * Default: 600000 (10 minutes).
    */
   staleThreshold?: number;
 
-  /** Sweeper kontrol frekansı. Default: 60000 ms. */
+  /** Sweeper check interval. Default: 60000 ms. */
   staleCheckInterval?: number;
 
   /**
-   * Aynı vehicleId için minimum ingest aralığı (ms). Default: 100.
-   * Bu süre içinde gelen ikinci ingest yutulur, 'ingest' event'inde 'throttled' sayılır.
+   * Minimum ingest interval per vehicleId (ms). Default: 100.
+   * Subsequent ingests within this window are dropped and counted under
+   * `throttled` on the 'ingest' event.
    */
   ingestThrottle?: number;
 
-  /** İlk pozisyon geldiğinde davranış. Default: 'show-immediately'. */
+  /** Initial-position behavior. Default: 'show-immediately'. */
   initialPositionBehavior?: InitialPositionBehavior;
 
-  /** Heading shortest-arc interpolation. Default: true. */
+  /** Use the shortest-arc path when interpolating heading. Default: true. */
   shortestArcHeading?: boolean;
 
   /**
-   * Render-tarafı interpolation buffer (ms). Marker, ekranda `now - renderLagMs`
-   * anına denk gelen pozisyonda gösterilir.
+   * Render-side interpolation buffer (ms). The marker is rendered at the
+   * position corresponding to `now - renderLagMs`.
    *
-   * Olmadan: yeni ingest gelir gelmez `current.receivedAt = now`, dolayısıyla
-   * `elapsed = now - previous.receivedAt ≥ period` daima true olur ve tick her
-   * defasında current'a snap eder — interpolation **hiç çalışmaz**.
+   * Without this, `current.receivedAt = now` the moment a new position is
+   * ingested, so `elapsed = now - previous.receivedAt ≥ period` is always
+   * true and the tick degenerates to snapping — interpolation **never runs**
+   * in real-time scenarios.
    *
-   * Sağlıklı default: beklenen ingest periyodu kadar (örn. 1 Hz feed için 1000).
-   * Bu, "current" ingest edildiği anda `renderTime ≈ previous.receivedAt` yapar
-   * ve marker bir sonraki ingest gelene kadar previous'tan current'a düzgün akar.
+   * Sensible default: roughly the expected ingest period (e.g. 1000 for a
+   * 1 Hz feed). At that value, the moment a new "current" is ingested,
+   * `renderTime ≈ previous.receivedAt`, and the marker slides smoothly from
+   * previous to current until the next ingest arrives.
    *
-   * 0 verilirse buffer kapalıdır (eski v0.1.0 davranışı; gerçek-zamanlı
-   * interpolation gözükmez, sadece teleport).
+   * Setting this to 0 disables the buffer (legacy v0.1.0 behavior; real-time
+   * interpolation does not run, the marker simply teleports).
    *
    * Default: 1000.
    */
   renderLagMs?: number;
 
-  /** Web Worker'da çalıştır. Default: false (v0.2'de detaylandırılır). */
+  /** Run inside a Web Worker. Default: false (detailed in v0.2.x+). */
   worker?: boolean;
 
   /** Adapter instance. */
@@ -206,7 +212,7 @@ export interface TrackerOptions {
 }
 
 /**
- * Tüm map adapter'ların uyması gereken interface.
+ * Contract every map adapter must implement.
  */
 export interface TrackAdapter {
   addVehicle(id: string, initialPoint: TrailPoint): void;
@@ -214,26 +220,26 @@ export interface TrackAdapter {
   removeVehicle(id: string): void;
   destroy(): void;
 
-  /** Opsiyonel: opacity (0..1) güncelle. Fade behavior için. */
+  /** Optional: update marker opacity (0..1). Used by the fade behavior. */
   updateOpacity?(id: string, opacity: number): void;
 
   /**
-   * Opsiyonel: vehicle lifecycle state değiştiğinde çağrılır
+   * Optional: invoked whenever a vehicle's lifecycle state changes
    * (active ↔ warning, → stale → removeVehicle, → completed → removeVehicle).
    *
-   * Adapter'lar bu hook'u kullanıp gap visualization yapabilir — örn. warning
-   * state'de marker'ı soluklaştırma, recovery'de eski opacity'ye dönme.
-   * `stale` ve `completed` hemen ardından `removeVehicle` ile takip edilir;
-   * bu state'leri rendering tarafında handle etmek zorunlu değil.
+   * Adapters can use this hook to render gap visualization — e.g. dimming
+   * the marker in `warning` state and restoring opacity on recovery. The
+   * `stale` and `completed` states are immediately followed by
+   * `removeVehicle`, so adapters don't have to handle them visually.
    */
   setVehicleState?(id: string, state: VehicleState): void;
 
-  /** Opsiyonel: adapter tarafındaki bellek tahmini (bytes). */
+  /** Optional: adapter-side memory estimate in bytes (surfaced via getStats). */
   getMemoryEstimate?(): number;
 }
 
 /**
- * Event isimleri ve payload'ları.
+ * Event names and payload shapes.
  */
 export type TrackerEventMap = {
   tick: { time: number; activeCount: number };
@@ -250,7 +256,7 @@ export type TrackerEventMap = {
 };
 
 /**
- * Çalışma istatistikleri (devtools + benchmarks).
+ * Runtime statistics (devtools + benchmarks).
  */
 export interface TrackerStats {
   vehicleCount: number;

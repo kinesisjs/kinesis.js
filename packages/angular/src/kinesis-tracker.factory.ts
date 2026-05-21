@@ -7,9 +7,9 @@ import type { Position } from '@kinesisjs/core';
 import type { KinesisTrackerConfig } from './types';
 
 /**
- * Programmatik kullanım için Tracker fabrikası. Component dışında (service,
- * route resolver, vb.) çağrılabilir. Angular `DestroyRef`'ten otomatik cleanup
- * yapar — manuel `tracker.destroy()` gerekmez.
+ * Programmatic Tracker factory. Callable outside a component (service, route
+ * resolver, etc.). Cleanup is automatic via Angular's `DestroyRef` — no
+ * manual `tracker.destroy()` required.
  *
  * @example
  * ```ts
@@ -21,8 +21,8 @@ import type { KinesisTrackerConfig } from './types';
  * }
  * ```
  *
- * **Önemli:** Bu fonksiyon Angular injection context'i gerektirir
- * (constructor veya `runInInjectionContext` içinden çağrılmalı).
+ * **Important:** must be called inside an Angular injection context
+ * (a constructor or a `runInInjectionContext` block).
  */
 export function kinesisTracker(config: KinesisTrackerConfig): Tracker {
   const destroyRef = inject(DestroyRef);
@@ -44,10 +44,12 @@ export function kinesisTracker(config: KinesisTrackerConfig): Tracker {
 }
 
 /**
- * Pozisyon kaynağını (Signal veya Observable) Tracker'a bağla.
- * Cleanup otomatik (Signal effect injector ile, Observable takeUntilDestroyed ile).
+ * Bind a position source (Signal or Observable) to a Tracker. Cleanup is
+ * automatic (Signals via the effect's injector, Observables via
+ * `takeUntilDestroyed`).
  *
- * @internal Public export değil — directive ve factory bu helper'ı paylaşır.
+ * @internal Not a public export — shared helper between the directive and the
+ *           factory.
  */
 export function bindPositions(
   tracker: Tracker,
