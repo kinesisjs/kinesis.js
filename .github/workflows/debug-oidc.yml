@@ -126,52 +126,61 @@ jobs:
             echo "[$STATUS] POST $path → $BODY_SUMMARY"
           done
 
-          # ── 6) npm CLI's own behavior with the OIDC token.
-          #     If `npm whoami` succeeds when we put the OIDC token in .npmrc as
-          #     _authToken, npm CLI knows something curl doesn't (special header
-          #     handling, internal exchange call, etc.). The verbose flag dumps
-          #     the actual HTTP requests it makes.
+          # ── 6) Probe npm CLI directly. Use sudo for the global install (the
+          #     previous round failed without it). Then capture --loglevel=http
+          #     output from `npm whoami` — that dumps every URL npm hits, which
+          #     reveals whether npm CLI has any internal exchange step we'd be
+          #     missing in pnpm's publish path.
           echo ""
           echo "=================================================================="
-          echo "6) Latest npm CLI behavior — install npm@latest, try whoami / publish"
+          echo "6) npm CLI HTTP trace — what URLs does npm actually call?"
           echo "=================================================================="
-          npm install -g npm@latest 2>&1 | tail -2
+          sudo npm install -g npm@latest 2>&1 | tail -2 || true
           echo "npm version: $(npm --version)"
           echo "node version: $(node --version)"
 
-          # Configure .npmrc with the OIDC token as _authToken (what npm 11+
-          # TP-aware versions may unwrap internally).
           NPMRC=$(mktemp)
           chmod 600 "$NPMRC"
           printf 'registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=%s\n' "$TOKEN" > "$NPMRC"
 
-          echo "--- npm whoami --verbose ---"
+          echo ""
+          echo "--- npm whoami --loglevel=http (every HTTP request npm makes) ---"
           NPM_CONFIG_USERCONFIG="$NPMRC" \
           NPM_CONFIG_PROVENANCE=true \
-            npm whoami --verbose 2>&1 | tail -25 || true
+          ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            npm whoami --loglevel=http 2>&1 | tail -40 || true
 
+          # Also try a dry-run publish so we can see if it triggers an OIDC
+          # exchange when --provenance is on. We need a tarball to dry-run
+          # against; create a tiny throwaway one.
           echo ""
-          echo "--- npm view @kinesisjs/openlayers (sanity, no auth needed) ---"
-          NPM_CONFIG_USERCONFIG="$NPMRC" \
-            npm view @kinesisjs/openlayers version 2>&1 | tail -3 || true
+          echo "--- minimal package + npm publish --dry-run --provenance ---"
+          PKGDIR=$(mktemp -d)
+          cat > "$PKGDIR/package.json" <<'JSON'
+          {
+            "name": "@kinesisjs/openlayers",
+            "version": "0.99.99-tp-debug",
+            "publishConfig": { "access": "public" }
+          }
+          JSON
+          (
+            cd "$PKGDIR"
+            NPM_CONFIG_USERCONFIG="$NPMRC" \
+            NPM_CONFIG_PROVENANCE=true \
+            ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+            ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              npm publish --dry-run --provenance --access public --loglevel=http 2>&1 | tail -60 || true
+          )
 
-          # Also try GitHub Actions' built-in OIDC + npm publish flow via
-          # actions/setup-node which configures .npmrc differently. We mimic
-          # the same setup minus the actual publish.
-          echo ""
-          echo "--- env hints actions/setup-node sets for OIDC ---"
-          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: $([ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] && echo yes || echo no)"
-          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: $([ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] && echo yes || echo no)"
-
-          rm -f "$NPMRC"
+          rm -rf "$NPMRC" "$PKGDIR"
 
           echo ""
           echo "=================================================================="
-          echo "Diagnostic key:"
-          echo "  - Any 2xx/4xx-with-body in step 5 → that endpoint is real;"
-          echo "                                       its body tells the next move."
-          echo "  - 'npm whoami' 200 → npm CLI handles OIDC internally; the issue"
-          echo "                       is pnpm publish skipping that codepath."
-          echo "  - 'npm whoami' 401/E* → npm CLI alone can't TP either, the"
-          echo "                          missing piece is at the registry side."
+          echo "What to look for in the npm output above:"
+          echo "  - 'http fetch GET ...' lines name the real endpoints npm hits"
+          echo "  - any 'oidc' / 'trusted' / 'exchange' in the log → the actual URL"
+          echo "  - whoami → 200 means OIDC works at CLI level (pnpm publish bug)"
+          echo "  - whoami → 401 + same in dry-run → npm CLI also can't TP here;"
+          echo "    next step is npm support / re-pair Trusted Publisher in UI"
           echo "=================================================================="
