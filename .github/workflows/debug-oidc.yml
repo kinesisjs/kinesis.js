@@ -100,13 +100,35 @@ jobs:
             https://registry.npmjs.org/@kinesisjs%2Fopenlayers \
             | head -60 || true
 
+          # ── 5) The actual npm OIDC publish flow expects an exchange step:
+          #       POST /-/npm/v1/oidc/token/exchange  { id_token: <oidc> }
+          #     If that returns a publish token, the Trusted Publisher rule IS
+          #     matching and the earlier whoami 401 just means npm doesn't
+          #     accept raw OIDC as a Bearer — it has to be exchanged first.
+          #     If that returns an error body, npm tells us *exactly* what
+          #     fails to validate (this is what we've been missing).
+          echo ""
+          echo "=================================================================="
+          echo "5) POST /-/npm/v1/oidc/token/exchange (the actual Trusted Publisher"
+          echo "   handshake that pnpm/npm CLI is supposed to perform first)"
+          echo "=================================================================="
+          # Build JSON body via python to avoid quoting issues on the token.
+          BODY=$(python3 -c "import json,sys; print(json.dumps({'id_token': sys.stdin.read().strip()}))" <<< "$TOKEN")
+          curl -sS -i -X POST \
+            -H "User-Agent: $UA" \
+            -H "Content-Type: application/json" \
+            -d "$BODY" \
+            https://registry.npmjs.org/-/npm/v1/oidc/token/exchange \
+            | head -60 || true
+
           echo ""
           echo "=================================================================="
           echo "Diagnostic key:"
-          echo "  - whoami 200 → npm accepts the OIDC token as identity"
-          echo "  - whoami 401/403 → token not recognized at all (TP rule mismatch"
-          echo "                     or audience/issuer issue)"
-          echo "  - PUT body containing 'token_audience', 'oidc', 'trusted' →"
-          echo "                     concrete validator clue we can fix"
-          echo "  - PUT 404 with no useful body → npm is masking auth (same as today)"
+          echo "  - whoami 401 + exchange 200 → pnpm/changesets-action is NOT"
+          echo "                                doing the exchange step. Workaround:"
+          echo "                                exchange in workflow, set NODE_AUTH_TOKEN."
+          echo "  - whoami 401 + exchange 4xx with body → npm tells us what"
+          echo "                                fails to validate (the answer we want)."
+          echo "  - whoami 401 + exchange 404 → exchange endpoint not at this URL;"
+          echo "                                try /-/npm/v1/oidc/exchange or v2."
           echo "=================================================================="
