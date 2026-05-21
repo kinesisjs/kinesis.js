@@ -100,35 +100,78 @@ jobs:
             https://registry.npmjs.org/@kinesisjs%2Fopenlayers \
             | head -60 || true
 
-          # ── 5) The actual npm OIDC publish flow expects an exchange step:
-          #       POST /-/npm/v1/oidc/token/exchange  { id_token: <oidc> }
-          #     If that returns a publish token, the Trusted Publisher rule IS
-          #     matching and the earlier whoami 401 just means npm doesn't
-          #     accept raw OIDC as a Bearer — it has to be exchanged first.
-          #     If that returns an error body, npm tells us *exactly* what
-          #     fails to validate (this is what we've been missing).
+          # ── 5) Scan candidate OIDC exchange endpoints (the first probe at
+          #       /-/npm/v1/oidc/token/exchange returned ResourceNotFound, so
+          #       npm uses a different path or scheme entirely).
           echo ""
           echo "=================================================================="
-          echo "5) POST /-/npm/v1/oidc/token/exchange (the actual Trusted Publisher"
-          echo "   handshake that pnpm/npm CLI is supposed to perform first)"
+          echo "5) Endpoint scan — POST OIDC body to candidate paths"
           echo "=================================================================="
-          # Build JSON body via python to avoid quoting issues on the token.
           BODY=$(python3 -c "import json,sys; print(json.dumps({'id_token': sys.stdin.read().strip()}))" <<< "$TOKEN")
-          curl -sS -i -X POST \
-            -H "User-Agent: $UA" \
-            -H "Content-Type: application/json" \
-            -d "$BODY" \
-            https://registry.npmjs.org/-/npm/v1/oidc/token/exchange \
-            | head -60 || true
+          for path in \
+            '/-/npm/v1/oidc/exchange' \
+            '/-/npm/v1/oidc/token' \
+            '/-/npm/v1/tokens' \
+            '/-/oidc/token/exchange' \
+            '/-/oidc/exchange' \
+            '/-/v1/oidc/registry' \
+            '/-/npm/v1/oidc/registry'; do
+            STATUS=$(curl -sS -o /tmp/resp.json -w "%{http_code}" \
+              -X POST \
+              -H "User-Agent: $UA" \
+              -H "Content-Type: application/json" \
+              -d "$BODY" \
+              "https://registry.npmjs.org$path")
+            BODY_SUMMARY=$(head -c 300 /tmp/resp.json | tr -d '\n')
+            echo "[$STATUS] POST $path → $BODY_SUMMARY"
+          done
+
+          # ── 6) npm CLI's own behavior with the OIDC token.
+          #     If `npm whoami` succeeds when we put the OIDC token in .npmrc as
+          #     _authToken, npm CLI knows something curl doesn't (special header
+          #     handling, internal exchange call, etc.). The verbose flag dumps
+          #     the actual HTTP requests it makes.
+          echo ""
+          echo "=================================================================="
+          echo "6) Latest npm CLI behavior — install npm@latest, try whoami / publish"
+          echo "=================================================================="
+          npm install -g npm@latest 2>&1 | tail -2
+          echo "npm version: $(npm --version)"
+          echo "node version: $(node --version)"
+
+          # Configure .npmrc with the OIDC token as _authToken (what npm 11+
+          # TP-aware versions may unwrap internally).
+          NPMRC=$(mktemp)
+          chmod 600 "$NPMRC"
+          printf 'registry=https://registry.npmjs.org/\n//registry.npmjs.org/:_authToken=%s\n' "$TOKEN" > "$NPMRC"
+
+          echo "--- npm whoami --verbose ---"
+          NPM_CONFIG_USERCONFIG="$NPMRC" \
+          NPM_CONFIG_PROVENANCE=true \
+            npm whoami --verbose 2>&1 | tail -25 || true
+
+          echo ""
+          echo "--- npm view @kinesisjs/openlayers (sanity, no auth needed) ---"
+          NPM_CONFIG_USERCONFIG="$NPMRC" \
+            npm view @kinesisjs/openlayers version 2>&1 | tail -3 || true
+
+          # Also try GitHub Actions' built-in OIDC + npm publish flow via
+          # actions/setup-node which configures .npmrc differently. We mimic
+          # the same setup minus the actual publish.
+          echo ""
+          echo "--- env hints actions/setup-node sets for OIDC ---"
+          echo "ACTIONS_ID_TOKEN_REQUEST_URL set: $([ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] && echo yes || echo no)"
+          echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN set: $([ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ] && echo yes || echo no)"
+
+          rm -f "$NPMRC"
 
           echo ""
           echo "=================================================================="
           echo "Diagnostic key:"
-          echo "  - whoami 401 + exchange 200 → pnpm/changesets-action is NOT"
-          echo "                                doing the exchange step. Workaround:"
-          echo "                                exchange in workflow, set NODE_AUTH_TOKEN."
-          echo "  - whoami 401 + exchange 4xx with body → npm tells us what"
-          echo "                                fails to validate (the answer we want)."
-          echo "  - whoami 401 + exchange 404 → exchange endpoint not at this URL;"
-          echo "                                try /-/npm/v1/oidc/exchange or v2."
+          echo "  - Any 2xx/4xx-with-body in step 5 → that endpoint is real;"
+          echo "                                       its body tells the next move."
+          echo "  - 'npm whoami' 200 → npm CLI handles OIDC internally; the issue"
+          echo "                       is pnpm publish skipping that codepath."
+          echo "  - 'npm whoami' 401/E* → npm CLI alone can't TP either, the"
+          echo "                          missing piece is at the registry side."
           echo "=================================================================="
