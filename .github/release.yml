@@ -1,0 +1,37 @@
+# Configuration consumed by GitHub's "Generate release notes" button on the
+# releases page (Releases → Draft a new release → Generate release notes).
+#
+# Our day-to-day workflow pushes feature commits directly to main, so most
+# release notes content lives in the per-package CHANGELOG.md files (rendered
+# automatically into per-package GitHub releases by changesets/action). This
+# file shapes the umbrella vX.Y.Z release when we open one by hand — filters
+# the changesets bot PR noise and groups any PR-based contributions by
+# conventional-commit type.
+
+changelog:
+  exclude:
+    authors:
+      - github-actions[bot]
+      - dependabot[bot]
+    labels:
+      - skip-release-notes
+  categories:
+    - title: Features
+      labels:
+        - feat
+        - feature
+    - title: Bug Fixes
+      labels:
+        - fix
+        - bug
+    - title: Documentation
+      labels:
+        - docs
+    - title: Build & CI
+      labels:
+        - build
+        - ci
+        - chore
+    - title: Other Changes
+      labels:
+        - '*'

@@ -51,6 +51,13 @@ jobs:
           publish: pnpm changeset:publish
           commit: 'chore(release): version packages'
           title: 'chore(release): version packages'
+          # Create one GitHub release per published package version, with body
+          # auto-filled from that package's CHANGELOG.md entry. Per-package
+          # releases give npm consumers a click-through "release notes" link
+          # straight from each @kinesisjs/<pkg>@x.y.z npm page. Umbrella vX.Y.Z
+          # tags + releases (curated highlights) are still created by hand on
+          # release days where we want a human summary across packages.
+          createGithubReleases: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # No NPM_TOKEN here — Trusted Publishing on npm (per-package, see
