@@ -151,16 +151,20 @@ jobs:
           ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             npm whoami --loglevel=http 2>&1 | tail -40 || true
 
-          # Also try a dry-run publish so we can see if it triggers an OIDC
-          # exchange when --provenance is on. We need a tarball to dry-run
-          # against; create a tiny throwaway one.
+          # Real publish attempt against a unique prerelease version. Tagged
+          # `debug` to satisfy npm's prerelease rule. We want the registry to
+          # reject this (we expect 404), but with --loglevel=http we capture
+          # the full PUT request/response — including any error body that
+          # explains the rejection.
           echo ""
-          echo "--- minimal package + npm publish --dry-run --provenance ---"
+          echo "--- real npm publish --provenance with full HTTP trace ---"
           PKGDIR=$(mktemp -d)
-          cat > "$PKGDIR/package.json" <<'JSON'
+          VERSION="0.99.99-tp-debug-$(date +%s)"
+          cat > "$PKGDIR/package.json" <<JSON
           {
             "name": "@kinesisjs/openlayers",
-            "version": "0.99.99-tp-debug",
+            "version": "$VERSION",
+            "description": "TP debug probe — should NOT publish",
             "publishConfig": { "access": "public" }
           }
           JSON
@@ -170,7 +174,7 @@ jobs:
             NPM_CONFIG_PROVENANCE=true \
             ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
             ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-              npm publish --dry-run --provenance --access public --loglevel=http 2>&1 | tail -60 || true
+              npm publish --provenance --access=public --tag=debug --loglevel=http 2>&1 | tail -80 || true
           )
 
           rm -rf "$NPMRC" "$PKGDIR"
