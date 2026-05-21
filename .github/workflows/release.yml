@@ -41,6 +41,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure git author for release commits
+        # changesets/action below uses git config to set author on the
+        # "Version Packages" commit; without these two lines it falls back to
+        # `github-actions[bot]`, which then shows up in the repo's Contributors
+        # sidebar. Setting an explicit maintainer identity keeps the bot off
+        # the contributors list for all future releases. Historical bot commits
+        # are remapped via .mailmap.
+        run: |
+          git config user.name "Muzaffer AŞKAR"
+          git config user.email "muh.muzafferaskar@gmail.com"
+
       - name: Build
         run: pnpm build
 
