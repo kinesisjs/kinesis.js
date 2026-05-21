@@ -1,10 +1,9 @@
-name: Debug OIDC (temporary, v0.1.3 investigation)
+name: Debug OIDC (temporary, v0.2.2 investigation)
 
-# Manual-trigger-only workflow that fetches the GitHub Actions OIDC token with
-# the same audience npm uses (`npm:registry.npmjs.org`) and prints its claims.
-# The claims are then compared by hand against the Trusted Publisher config on
-# https://www.npmjs.com/package/@kinesisjs/<pkg>/access to find the mismatch
-# that's causing E404 on PUT during `npm publish`.
+# Manual-trigger workflow that fetches the GitHub Actions OIDC token with the
+# same audience npm uses (`npm:registry.npmjs.org`) and probes the npm registry
+# with it. Each probe surfaces the exact response code + body so we can see
+# what npm rejects (the publish PUT masks every failure as 404).
 #
 # Delete this workflow file once the Trusted Publishing E404 is resolved.
 
@@ -12,20 +11,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  dump-oidc-claims:
-    name: Dump OIDC token claims (no secrets in output)
+  probe-npm-with-oidc:
+    name: Probe npm registry endpoints with the OIDC token
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
 
     steps:
-      - name: Fetch + decode OIDC claims for npm audience
+      - name: Fetch OIDC token, decode claims, probe registry
         run: |
           set -euo pipefail
           AUDIENCE="npm:registry.npmjs.org"
-          echo "Requesting OIDC token with audience='$AUDIENCE'"
+          UA="npm/10.9.2 node/22 linux x64"
 
+          echo "Requesting OIDC token with audience='$AUDIENCE'"
           TOKEN=$(curl -sS \
             -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$AUDIENCE" \
@@ -36,41 +36,77 @@ jobs:
             exit 1
           fi
 
-          # JWT structure is header.payload.signature, all base64url-encoded.
-          # We decode payload only (claims). Never print the token itself.
+          # ── 1) Decode and print OIDC claims (no token leakage; payload only) ──
           PAYLOAD=$(echo "$TOKEN" | cut -d'.' -f2)
-
           echo ""
           echo "=================================================================="
-          echo "OIDC token claims (audience=$AUDIENCE):"
+          echo "1) OIDC token claims (audience=$AUDIENCE)"
           echo "=================================================================="
           python3 -c "
-          import base64, json, sys
+          import base64, json
           b = '''$PAYLOAD'''
           b += '=' * ((4 - len(b) % 4) % 4)
           claims = json.loads(base64.urlsafe_b64decode(b))
-          # Filter out non-identifying boilerplate to keep the output readable
-          drop = {'iat','exp','nbf','jti','aud','iss'}
+          drop = {'iat','exp','nbf','jti'}
           identity = {k: v for k, v in claims.items() if k not in drop}
           print(json.dumps(identity, indent=2, sort_keys=True))
-          print('')
-          print('--- token validity ---')
-          print(json.dumps({
-            'aud': claims.get('aud'),
-            'iss': claims.get('iss'),
-            'iat': claims.get('iat'),
-            'exp': claims.get('exp'),
-            'ttl_seconds': claims.get('exp', 0) - claims.get('iat', 0),
-          }, indent=2))
           "
+
+          # ── 2) GET /-/whoami with OIDC bearer ──
+          # If npm accepts the OIDC token as a valid identity (even read-only),
+          # this returns 200 with a username body. A 401/403 here means the
+          # registry doesn't recognize the OIDC token at all — Trusted Publisher
+          # rule isn't matching.
+          echo ""
+          echo "=================================================================="
+          echo "2) GET /-/whoami with OIDC bearer"
+          echo "=================================================================="
+          curl -sS -i \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "User-Agent: $UA" \
+            -H "npm-auth-type: oidc" \
+            https://registry.npmjs.org/-/whoami \
+            | head -40 || true
+
+          # ── 3) GET package metadata (anonymous-readable, but try bearer) ──
+          echo ""
+          echo "=================================================================="
+          echo "3) GET @kinesisjs/openlayers package metadata"
+          echo "=================================================================="
+          curl -sS -i \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "User-Agent: $UA" \
+            https://registry.npmjs.org/@kinesisjs%2Fopenlayers \
+            | head -20 || true
+
+          # ── 4) PUT a sham 0.99.99-debug version to /@kinesisjs/openlayers ──
+          # We send a malformed minimal manifest deliberately — npm will reject
+          # it on auth BEFORE manifest validation if the OIDC token isn't
+          # accepted. The response body usually includes a real reason for
+          # the rejection (instead of the cryptic 404 we get from real
+          # publishes via pnpm).
+          echo ""
+          echo "=================================================================="
+          echo "4) PUT a probe version with the OIDC bearer (registry will reject;"
+          echo "   we want the *reason* in the response body)"
+          echo "=================================================================="
+          PROBE_BODY='{"name":"@kinesisjs/openlayers","versions":{"0.99.99-tp-debug":{"name":"@kinesisjs/openlayers","version":"0.99.99-tp-debug"}}}'
+          curl -sS -i -X PUT \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "User-Agent: $UA" \
+            -H "Content-Type: application/json" \
+            -H "npm-auth-type: oidc" \
+            -d "$PROBE_BODY" \
+            https://registry.npmjs.org/@kinesisjs%2Fopenlayers \
+            | head -60 || true
 
           echo ""
           echo "=================================================================="
-          echo "Compare these claims against each npm Trusted Publisher config:"
-          echo "  - 'repository' must equal:  <Organization>/<Repository> on the form"
-          echo "  - 'job_workflow_ref' format: <org>/<repo>/.github/workflows/<file>@<ref>"
-          echo "    The Trusted Publisher 'Workflow filename' field becomes the <file>"
-          echo "    part. Any mismatch (case, extension, subdirectory) -> E404."
-          echo "  - 'environment' must equal the form's 'Environment name'"
-          echo "    (empty form field == no 'environment' claim in token)"
+          echo "Diagnostic key:"
+          echo "  - whoami 200 → npm accepts the OIDC token as identity"
+          echo "  - whoami 401/403 → token not recognized at all (TP rule mismatch"
+          echo "                     or audience/issuer issue)"
+          echo "  - PUT body containing 'token_audience', 'oidc', 'trusted' →"
+          echo "                     concrete validator clue we can fix"
+          echo "  - PUT 404 with no useful body → npm is masking auth (same as today)"
           echo "=================================================================="
