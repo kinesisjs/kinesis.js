@@ -43,17 +43,23 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Upgrade npm to a version that supports Trusted Publishing
+      - name: Upgrade tool-cache npm to a version that supports Trusted Publishing
         # Node 22.x ships with npm 10.x by default. npm's automatic Trusted
         # Publishing OIDC flow was only added in npm 11.5. Without this
         # upgrade, npm CLI sees ACTIONS_ID_TOKEN_REQUEST_* env vars but
         # ignores them, and every publish fails with ENEEDAUTH (or, when
-        # rolled up by changesets, an opaque 404). Pin to >=11.5; the
-        # @latest tag is fine for CI.
+        # rolled up by changesets, an opaque 404).
+        #
+        # Note: we deliberately do NOT use `sudo` here. With sudo the system
+        # PATH is reset and the install lands in /usr/local/lib/node_modules,
+        # leaving the tool-cache npm (the one `which npm` resolves to) at
+        # 10.x. Without sudo we install into setup-node's tool cache, which
+        # is writable by the runner user.
         run: |
-          sudo npm install -g npm@latest
-          echo "npm:  $(npm --version)"
-          echo "node: $(node --version)"
+          npm install -g npm@latest
+          echo "which: $(which npm)"
+          echo "npm:   $(npm --version)"
+          echo "node:  $(node --version)"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -176,11 +182,14 @@ jobs:
                 UNSET_FLAGS="$UNSET_FLAGS -u $name"
               done < <(env | grep -iE '^(NPM_CONFIG_|npm_config_)')
 
+              # `npx -y npm@latest` guarantees we run an npm CLI that
+              # supports automatic OIDC Trusted Publishing (>=11.5),
+              # regardless of which npm sits in $PATH from setup-node.
               env $UNSET_FLAGS \
                 ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
                 ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
                 NPM_CONFIG_PROVENANCE=true \
-                npm publish \
+                npx -y npm@latest publish \
                   --provenance \
                   --access=public \
                   --loglevel=http \
