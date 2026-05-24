@@ -55,25 +55,51 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Create release PR or publish
-        uses: changesets/action@v1
-        with:
-          version: pnpm changeset:version
-          publish: pnpm changeset:publish
-          commit: 'chore(release): version packages'
-          title: 'chore(release): version packages'
-          # Create one GitHub release per published package version, with body
-          # auto-filled from that package's CHANGELOG.md entry. Per-package
-          # releases give npm consumers a click-through "release notes" link
-          # straight from each @kinesisjs/<pkg>@x.y.z npm page. Umbrella vX.Y.Z
-          # tags + releases (curated highlights) are still created by hand on
-          # release days where we want a human summary across packages.
-          createGithubReleases: true
+      # TEMP DEBUG (remove after TP issue resolved): dump OIDC claims so we
+      # can compare what release.yml's push-trigger OIDC token contains vs.
+      # what npm's Trusted Publisher rule expects (release.yml + repo +
+      # owner). Round 6 of debug-oidc.yml proved exchange works under a
+      # workflow_dispatch trigger — this step verifies whether the push
+      # trigger here produces different claims.
+      - name: 'DEBUG: dump OIDC claims for TP analysis'
+        run: |
+          set -euo pipefail
+          TOKEN=$(curl -sS \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" \
+            | jq -r '.value')
+          PAYLOAD=$(echo "$TOKEN" | cut -d'.' -f2)
+          echo "================================================================"
+          echo "OIDC claims (audience=npm:registry.npmjs.org) from release.yml"
+          echo "================================================================"
+          python3 -c "
+          import base64, json
+          b = '''$PAYLOAD'''
+          b += '=' * ((4 - len(b) % 4) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(b))
+          drop = {'iat','exp','nbf','jti'}
+          identity = {k: v for k, v in claims.items() if k not in drop}
+          print(json.dumps(identity, indent=2, sort_keys=True))
+          "
+
+      # TEMP DEBUG: bypass changesets/action so we can capture the actual
+      # HTTP trace (--loglevel=http) of the publish call. changesets/action
+      # silently swallows http logs, leaving us with only the opaque 404.
+      # First attempt the changesets version PR flow; if there's no pending
+      # version PR (i.e. nothing to version), skip straight to direct
+      # publish of all 3 packages with full HTTP logging.
+      - name: 'DEBUG: direct npm publish with full HTTP trace'
+        run: |
+          set -euxo pipefail
+          for pkg in core openlayers angular; do
+            echo ""
+            echo "================================================================"
+            echo "Publishing @kinesisjs/$pkg with --loglevel=http"
+            echo "================================================================"
+            (
+              cd "packages/$pkg"
+              npm publish --provenance --access=public --loglevel=http 2>&1 | tail -80 || true
+            )
+          done
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # No NPM_TOKEN here — Trusted Publishing on npm (per-package, see
-          # documents/design/release-runbook.md §9) + `id-token: write` above
-          # mints a short-lived OIDC token at publish time. The legacy
-          # NPM_TOKEN repo secret can be removed once all 3 packages have
-          # their Trusted Publisher configured.
           NPM_CONFIG_PROVENANCE: true
