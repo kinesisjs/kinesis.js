@@ -32,14 +32,34 @@ jobs:
           run_install: false
 
       - name: Setup Node.js
+        # IMPORTANT: registry-url is intentionally NOT set here. When set,
+        # actions/setup-node writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`
+        # into ~/.npmrc. With Trusted Publishing we don't set NODE_AUTH_TOKEN, so
+        # npm CLI sees an empty bearer token, assumes "already authenticated", and
+        # SKIPS the OIDC token exchange entirely — every publish then 404s. The
+        # default registry is registry.npmjs.org anyway, so registry-url is
+        # superfluous; omitting it lets npm CLI run its TP flow correctly.
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Belt-and-braces: scrub any stale _authToken lines that another tool
+      # (e.g. pnpm's setup) may have written. Without this, npm CLI may still
+      # skip the OIDC exchange.
+      - name: Clean .npmrc of any _authToken lines (forces TP OIDC flow)
+        run: |
+          for f in "$HOME/.npmrc" "$NPM_CONFIG_USERCONFIG" "$GITHUB_WORKSPACE/.npmrc"; do
+            if [ -n "${f:-}" ] && [ -f "$f" ]; then
+              echo "Scrubbing _authToken from $f"
+              sed -i.bak '/_authToken/d' "$f"
+            fi
+          done
+          echo "--- effective npm config (auth-related) ---"
+          npm config list -l 2>&1 | grep -iE 'registry|auth|token' || true
 
       - name: Configure git author for release commits
         # changesets/action below uses git config to set author on the
