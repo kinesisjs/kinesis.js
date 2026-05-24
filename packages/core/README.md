@@ -3,6 +3,9 @@
 > Pure-TypeScript interpolation engine — framework-agnostic, ~5 KB minified+gzipped.
 
 [![npm](https://img.shields.io/npm/v/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)
+[![Downloads](https://img.shields.io/npm/dm/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)
+[![Bundle size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/core?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/core)
+[![Provenance](https://img.shields.io/badge/npm%20provenance-signed-brightgreen.svg?logo=sigstore&logoColor=white)](https://www.npmjs.com/package/@kinesisjs/core)
 [![Changelog](https://img.shields.io/badge/changelog-keep%20a%20changelog-blue)](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)

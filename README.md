@@ -6,16 +6,19 @@
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178c6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9-f69220.svg?logo=pnpm&logoColor=white)](https://pnpm.io/)
+[![Provenance](https://img.shields.io/badge/npm%20provenance-signed-brightgreen.svg?logo=sigstore&logoColor=white)](https://docs.npmjs.com/generating-provenance-statements)
 
 A framework-agnostic interpolation engine for fleet tracking, telematics, ride-hailing, transit, and asset-tracking applications. Renders smooth 60fps movement between periodic WebSocket or HTTP position updates while keeping memory bounded across multi-hour sessions.
 
 ## Packages
 
-| Package                                          | Purpose                                            |
-| ------------------------------------------------ | -------------------------------------------------- |
-| [`@kinesisjs/core`](./packages/core)             | Pure-TypeScript interpolation engine and lifecycle |
-| [`@kinesisjs/openlayers`](./packages/openlayers) | OpenLayers map adapter                             |
-| [`@kinesisjs/angular`](./packages/angular)       | Angular 17+ Signals / RxJS wrapper                 |
+| Package                                          | Version                                                                                                               | Downloads                                                                                                             | Bundle                                                                                                                                               | Purpose                                            |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [`@kinesisjs/core`](./packages/core)             | [![npm](https://img.shields.io/npm/v/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)             | [![dl](https://img.shields.io/npm/dm/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)             | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/core?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/core)             | Pure-TypeScript interpolation engine and lifecycle |
+| [`@kinesisjs/openlayers`](./packages/openlayers) | [![npm](https://img.shields.io/npm/v/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers) | [![dl](https://img.shields.io/npm/dm/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers) | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/openlayers?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/openlayers) | OpenLayers map adapter                             |
+| [`@kinesisjs/angular`](./packages/angular)       | [![npm](https://img.shields.io/npm/v/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)       | [![dl](https://img.shields.io/npm/dm/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)       | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/angular?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/angular)       | Angular 17+ Signals / RxJS wrapper                 |
+
+All three packages are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) and signed via sigstore — every release is cryptographically traceable to the GitHub Actions workflow that built it.
 
 ## Quick start
 
