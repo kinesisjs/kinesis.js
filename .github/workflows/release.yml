@@ -35,14 +35,25 @@ jobs:
         # IMPORTANT: registry-url is intentionally NOT set here. When set,
         # actions/setup-node writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`
         # into ~/.npmrc. With Trusted Publishing we don't set NODE_AUTH_TOKEN, so
-        # npm CLI sees an empty bearer token, assumes "already authenticated", and
-        # SKIPS the OIDC token exchange entirely — every publish then 404s. The
-        # default registry is registry.npmjs.org anyway, so registry-url is
-        # superfluous; omitting it lets npm CLI run its TP flow correctly.
+        # npm CLI would see an empty bearer token, assume "already authenticated",
+        # and SKIP the OIDC token exchange. The default registry is
+        # registry.npmjs.org anyway, so registry-url is superfluous.
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Upgrade npm to a version that supports Trusted Publishing
+        # Node 22.x ships with npm 10.x by default. npm's automatic Trusted
+        # Publishing OIDC flow was only added in npm 11.5. Without this
+        # upgrade, npm CLI sees ACTIONS_ID_TOKEN_REQUEST_* env vars but
+        # ignores them, and every publish fails with ENEEDAUTH (or, when
+        # rolled up by changesets, an opaque 404). Pin to >=11.5; the
+        # @latest tag is fine for CI.
+        run: |
+          sudo npm install -g npm@latest
+          echo "npm:  $(npm --version)"
+          echo "node: $(node --version)"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
