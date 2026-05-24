@@ -1,1 +1,8 @@
 pnpm exec lint-staged
+
+# Run typecheck only when staged files include TypeScript — saves the
+# ~2s on README/config-only commits. Catches type regressions before
+# they reach CI so reviewers don't lose a green-CI cycle to a typo.
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '\.(ts|tsx)$'; then
+  pnpm typecheck
+fi
