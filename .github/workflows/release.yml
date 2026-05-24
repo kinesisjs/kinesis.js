@@ -91,6 +91,9 @@ jobs:
           echo "--- effective npm config (auth-related) ---"
           npm config list -l 2>&1 | grep -iE 'registry|auth|token' || true
 
+          echo "--- ALL NPM_CONFIG_* env vars (this is where _auth must live) ---"
+          env | grep -iE '^(NPM_CONFIG_|npm_config_)' | sort || echo "none set"
+
       - name: Configure git author for release commits
         # changesets/action below uses git config to set author on the
         # "Version Packages" commit; without these two lines it falls back to
@@ -141,25 +144,40 @@ jobs:
       - name: 'DEBUG: direct npm publish with full HTTP trace'
         run: |
           set -euxo pipefail
-          # --userconfig=/dev/null + --globalconfig=/dev/null bypass every
-          # npmrc on disk so npm CLI starts from a clean slate. Env vars
-          # (ACTIONS_ID_TOKEN_REQUEST_URL/TOKEN) are still inherited, so the
-          # OIDC TP flow becomes the only available auth path.
+          # Use two distinct empty temp files (npm CLI rejects pointing
+          # both --userconfig and --globalconfig at the same path, even
+          # /dev/null). Then unset every NPM_CONFIG_* env var so npm CLI
+          # starts from a truly clean slate — only env vars TP needs
+          # (ACTIONS_ID_TOKEN_REQUEST_URL/TOKEN) remain.
+          EMPTY_USER=$(mktemp)
+          EMPTY_GLOBAL=$(mktemp)
           for pkg in core openlayers angular; do
             echo ""
             echo "================================================================"
-            echo "Publishing @kinesisjs/$pkg with --loglevel=http (no npmrc)"
+            echo "Publishing @kinesisjs/$pkg with --loglevel=http (clean env+npmrc)"
             echo "================================================================"
             (
               cd "packages/$pkg"
-              npm publish \
-                --provenance \
-                --access=public \
-                --loglevel=http \
-                --userconfig=/dev/null \
-                --globalconfig=/dev/null \
-                2>&1 | tail -80 || true
+              # `env -i` would also drop PATH; instead, list every NPM_CONFIG_*
+              # var currently set and unset them one by one before publishing.
+              UNSET_FLAGS=""
+              while IFS='=' read -r name _; do
+                UNSET_FLAGS="$UNSET_FLAGS -u $name"
+              done < <(env | grep -iE '^(NPM_CONFIG_|npm_config_)')
+
+              env $UNSET_FLAGS \
+                ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
+                ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+                NPM_CONFIG_PROVENANCE=true \
+                npm publish \
+                  --provenance \
+                  --access=public \
+                  --loglevel=http \
+                  --userconfig="$EMPTY_USER" \
+                  --globalconfig="$EMPTY_GLOBAL" \
+                  2>&1 | tail -80 || true
             )
           done
+          rm -f "$EMPTY_USER" "$EMPTY_GLOBAL"
         env:
           NPM_CONFIG_PROVENANCE: true
