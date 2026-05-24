@@ -1,5 +1,20 @@
 # @kinesisjs/angular
 
+## 0.2.2
+
+### Patch Changes
+
+- [`fb22257`](https://github.com/kinesisjs/kinesis.js/commit/fb22257de11eb0e42b975c18cffdc0ffe6199c0f) Thanks [@Mu-As](https://github.com/Mu-As)! - Release pipeline restored — npm Trusted Publishing now verified end-to-end.
+
+  No runtime changes. This patch only re-establishes the OIDC publish flow
+  after the v0.1.2 / v0.2.0 / v0.2.1 release failures, by ensuring all three
+  packages have valid Trusted Publisher rules on npmjs.com that match the
+  release workflow.
+
+- Updated dependencies [[`fb22257`](https://github.com/kinesisjs/kinesis.js/commit/fb22257de11eb0e42b975c18cffdc0ffe6199c0f)]:
+  - @kinesisjs/core@0.2.1
+  - @kinesisjs/openlayers@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes
