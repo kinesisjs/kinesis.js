@@ -47,17 +47,47 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Belt-and-braces: scrub any stale _authToken lines that another tool
-      # (e.g. pnpm's setup) may have written. Without this, npm CLI may still
-      # skip the OIDC exchange.
-      - name: Clean .npmrc of any _authToken lines (forces TP OIDC flow)
+      # Belt-and-braces: scrub any _auth* lines from every npmrc the runner has,
+      # and dump diagnostic info so we can see WHERE the auth was sneaking in
+      # from. Without this, npm CLI keeps skipping the OIDC exchange because it
+      # believes it already has credentials (even if those creds are empty).
+      - name: Clean every .npmrc + diagnose auth env (forces TP OIDC flow)
         run: |
-          for f in "$HOME/.npmrc" "$NPM_CONFIG_USERCONFIG" "$GITHUB_WORKSPACE/.npmrc"; do
+          echo "--- npm config sources ---"
+          echo "user:    $(npm config get userconfig)"
+          echo "global:  $(npm config get globalconfig)"
+          echo "project: $GITHUB_WORKSPACE/.npmrc"
+          echo "env var: ${NPM_CONFIG_USERCONFIG:-<unset>}"
+
+          for f in \
+            "$(npm config get userconfig)" \
+            "$(npm config get globalconfig)" \
+            "/etc/npmrc" \
+            "$GITHUB_WORKSPACE/.npmrc" \
+            "$HOME/.npmrc" \
+            "${NPM_CONFIG_USERCONFIG:-}"; do
             if [ -n "${f:-}" ] && [ -f "$f" ]; then
-              echo "Scrubbing _authToken from $f"
-              sed -i.bak '/_authToken/d' "$f"
+              echo "--- BEFORE ($f) ---"
+              cat "$f"
+              echo "Scrubbing _auth* lines from $f"
+              sed -i.bak -E '/^[[:space:]]*(_auth|_authToken|always-auth)([[:space:]]*=|:_auth)/d' "$f"
+              echo "--- AFTER ($f) ---"
+              cat "$f" || true
             fi
           done
+
+          echo "--- ACTIONS_ID_TOKEN_REQUEST_* env vars (must be set for TP) ---"
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL is set ✓"
+          else
+            echo "ACTIONS_ID_TOKEN_REQUEST_URL MISSING ✗"
+          fi
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set ✓"
+          else
+            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN MISSING ✗"
+          fi
+
           echo "--- effective npm config (auth-related) ---"
           npm config list -l 2>&1 | grep -iE 'registry|auth|token' || true
 
@@ -111,14 +141,24 @@ jobs:
       - name: 'DEBUG: direct npm publish with full HTTP trace'
         run: |
           set -euxo pipefail
+          # --userconfig=/dev/null + --globalconfig=/dev/null bypass every
+          # npmrc on disk so npm CLI starts from a clean slate. Env vars
+          # (ACTIONS_ID_TOKEN_REQUEST_URL/TOKEN) are still inherited, so the
+          # OIDC TP flow becomes the only available auth path.
           for pkg in core openlayers angular; do
             echo ""
             echo "================================================================"
-            echo "Publishing @kinesisjs/$pkg with --loglevel=http"
+            echo "Publishing @kinesisjs/$pkg with --loglevel=http (no npmrc)"
             echo "================================================================"
             (
               cd "packages/$pkg"
-              npm publish --provenance --access=public --loglevel=http 2>&1 | tail -80 || true
+              npm publish \
+                --provenance \
+                --access=public \
+                --loglevel=http \
+                --userconfig=/dev/null \
+                --globalconfig=/dev/null \
+                2>&1 | tail -80 || true
             )
           done
         env:
