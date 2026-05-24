@@ -11,7 +11,7 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
-  id-token: write # for npm provenance
+  id-token: write # for npm provenance + Trusted Publishing OIDC
 
 jobs:
   release:
@@ -32,84 +32,36 @@ jobs:
           run_install: false
 
       - name: Setup Node.js
-        # IMPORTANT: registry-url is intentionally NOT set here. When set,
-        # actions/setup-node writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`
-        # into ~/.npmrc. With Trusted Publishing we don't set NODE_AUTH_TOKEN, so
-        # npm CLI would see an empty bearer token, assume "already authenticated",
-        # and SKIP the OIDC token exchange. The default registry is
-        # registry.npmjs.org anyway, so registry-url is superfluous.
+        # `registry-url` is intentionally NOT set. With it, actions/setup-node
+        # writes `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}` into
+        # ~/.npmrc. Under Trusted Publishing we don't set NODE_AUTH_TOKEN, and
+        # an empty token line can mask the OIDC flow on some npm versions.
+        # The registry default is registry.npmjs.org anyway, so omitting this
+        # is purely defensive.
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      - name: Upgrade tool-cache npm to a version that supports Trusted Publishing
-        # Node 22.x ships with npm 10.x by default. npm's automatic Trusted
-        # Publishing OIDC flow was only added in npm 11.5. Without this
-        # upgrade, npm CLI sees ACTIONS_ID_TOKEN_REQUEST_* env vars but
-        # ignores them, and every publish fails with ENEEDAUTH (or, when
-        # rolled up by changesets, an opaque 404).
+      - name: Upgrade tool-cache npm to >=11.5 (required for Trusted Publishing)
+        # Node 22.x ships with npm 10.x. npm's automatic OIDC Trusted
+        # Publishing flow landed in npm 11.5 — older npm CLIs see the
+        # ACTIONS_ID_TOKEN_REQUEST_* env vars and ignore them, and every
+        # publish fails with ENEEDAUTH (or, when wrapped by changesets/action,
+        # surfaces as an opaque 404). Without this upgrade, no release in
+        # this repo could ever publish via TP.
         #
-        # Note: we deliberately do NOT use `sudo` here. With sudo the system
-        # PATH is reset and the install lands in /usr/local/lib/node_modules,
-        # leaving the tool-cache npm (the one `which npm` resolves to) at
-        # 10.x. Without sudo we install into setup-node's tool cache, which
-        # is writable by the runner user.
+        # We deliberately avoid `sudo`: sudo strips PATH and the install
+        # lands in /usr/local/lib/node_modules, leaving the tool-cache npm
+        # (the one `which npm` resolves to) at 10.x. Plain `npm install -g`
+        # writes into setup-node's tool cache, which is owned by the runner
+        # user and is what every downstream step actually invokes.
         run: |
           npm install -g npm@latest
-          echo "which: $(which npm)"
-          echo "npm:   $(npm --version)"
-          echo "node:  $(node --version)"
+          echo "npm: $(npm --version)"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      # Belt-and-braces: scrub any _auth* lines from every npmrc the runner has,
-      # and dump diagnostic info so we can see WHERE the auth was sneaking in
-      # from. Without this, npm CLI keeps skipping the OIDC exchange because it
-      # believes it already has credentials (even if those creds are empty).
-      - name: Clean every .npmrc + diagnose auth env (forces TP OIDC flow)
-        run: |
-          echo "--- npm config sources ---"
-          echo "user:    $(npm config get userconfig)"
-          echo "global:  $(npm config get globalconfig)"
-          echo "project: $GITHUB_WORKSPACE/.npmrc"
-          echo "env var: ${NPM_CONFIG_USERCONFIG:-<unset>}"
-
-          for f in \
-            "$(npm config get userconfig)" \
-            "$(npm config get globalconfig)" \
-            "/etc/npmrc" \
-            "$GITHUB_WORKSPACE/.npmrc" \
-            "$HOME/.npmrc" \
-            "${NPM_CONFIG_USERCONFIG:-}"; do
-            if [ -n "${f:-}" ] && [ -f "$f" ]; then
-              echo "--- BEFORE ($f) ---"
-              cat "$f"
-              echo "Scrubbing _auth* lines from $f"
-              sed -i.bak -E '/^[[:space:]]*(_auth|_authToken|always-auth)([[:space:]]*=|:_auth)/d' "$f"
-              echo "--- AFTER ($f) ---"
-              cat "$f" || true
-            fi
-          done
-
-          echo "--- ACTIONS_ID_TOKEN_REQUEST_* env vars (must be set for TP) ---"
-          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ]; then
-            echo "ACTIONS_ID_TOKEN_REQUEST_URL is set ✓"
-          else
-            echo "ACTIONS_ID_TOKEN_REQUEST_URL MISSING ✗"
-          fi
-          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN is set ✓"
-          else
-            echo "ACTIONS_ID_TOKEN_REQUEST_TOKEN MISSING ✗"
-          fi
-
-          echo "--- effective npm config (auth-related) ---"
-          npm config list -l 2>&1 | grep -iE 'registry|auth|token' || true
-
-          echo "--- ALL NPM_CONFIG_* env vars (this is where _auth must live) ---"
-          env | grep -iE '^(NPM_CONFIG_|npm_config_)' | sort || echo "none set"
 
       - name: Configure git author for release commits
         # changesets/action below uses git config to set author on the
@@ -125,79 +77,23 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # TEMP DEBUG (remove after TP issue resolved): dump OIDC claims so we
-      # can compare what release.yml's push-trigger OIDC token contains vs.
-      # what npm's Trusted Publisher rule expects (release.yml + repo +
-      # owner). Round 6 of debug-oidc.yml proved exchange works under a
-      # workflow_dispatch trigger — this step verifies whether the push
-      # trigger here produces different claims.
-      - name: 'DEBUG: dump OIDC claims for TP analysis'
-        run: |
-          set -euo pipefail
-          TOKEN=$(curl -sS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" \
-            | jq -r '.value')
-          PAYLOAD=$(echo "$TOKEN" | cut -d'.' -f2)
-          echo "================================================================"
-          echo "OIDC claims (audience=npm:registry.npmjs.org) from release.yml"
-          echo "================================================================"
-          python3 -c "
-          import base64, json
-          b = '''$PAYLOAD'''
-          b += '=' * ((4 - len(b) % 4) % 4)
-          claims = json.loads(base64.urlsafe_b64decode(b))
-          drop = {'iat','exp','nbf','jti'}
-          identity = {k: v for k, v in claims.items() if k not in drop}
-          print(json.dumps(identity, indent=2, sort_keys=True))
-          "
-
-      # TEMP DEBUG: bypass changesets/action so we can capture the actual
-      # HTTP trace (--loglevel=http) of the publish call. changesets/action
-      # silently swallows http logs, leaving us with only the opaque 404.
-      # First attempt the changesets version PR flow; if there's no pending
-      # version PR (i.e. nothing to version), skip straight to direct
-      # publish of all 3 packages with full HTTP logging.
-      - name: 'DEBUG: direct npm publish with full HTTP trace'
-        run: |
-          set -euxo pipefail
-          # Use two distinct empty temp files (npm CLI rejects pointing
-          # both --userconfig and --globalconfig at the same path, even
-          # /dev/null). Then unset every NPM_CONFIG_* env var so npm CLI
-          # starts from a truly clean slate — only env vars TP needs
-          # (ACTIONS_ID_TOKEN_REQUEST_URL/TOKEN) remain.
-          EMPTY_USER=$(mktemp)
-          EMPTY_GLOBAL=$(mktemp)
-          for pkg in core openlayers angular; do
-            echo ""
-            echo "================================================================"
-            echo "Publishing @kinesisjs/$pkg with --loglevel=http (clean env+npmrc)"
-            echo "================================================================"
-            (
-              cd "packages/$pkg"
-              # `env -i` would also drop PATH; instead, list every NPM_CONFIG_*
-              # var currently set and unset them one by one before publishing.
-              UNSET_FLAGS=""
-              while IFS='=' read -r name _; do
-                UNSET_FLAGS="$UNSET_FLAGS -u $name"
-              done < <(env | grep -iE '^(NPM_CONFIG_|npm_config_)')
-
-              # `npx -y npm@latest` guarantees we run an npm CLI that
-              # supports automatic OIDC Trusted Publishing (>=11.5),
-              # regardless of which npm sits in $PATH from setup-node.
-              env $UNSET_FLAGS \
-                ACTIONS_ID_TOKEN_REQUEST_URL="$ACTIONS_ID_TOKEN_REQUEST_URL" \
-                ACTIONS_ID_TOKEN_REQUEST_TOKEN="$ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-                NPM_CONFIG_PROVENANCE=true \
-                npx -y npm@latest publish \
-                  --provenance \
-                  --access=public \
-                  --loglevel=http \
-                  --userconfig="$EMPTY_USER" \
-                  --globalconfig="$EMPTY_GLOBAL" \
-                  2>&1 | tail -80 || true
-            )
-          done
-          rm -f "$EMPTY_USER" "$EMPTY_GLOBAL"
+      - name: Create release PR or publish
+        uses: changesets/action@v1
+        with:
+          version: pnpm changeset:version
+          publish: pnpm changeset:publish
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+          # Create one GitHub release per published package version, with body
+          # auto-filled from that package's CHANGELOG.md entry. Per-package
+          # releases give npm consumers a click-through "release notes" link
+          # straight from each @kinesisjs/<pkg>@x.y.z npm page. Umbrella vX.Y.Z
+          # tags + releases (curated highlights) are still created by hand on
+          # release days where we want a human summary across packages.
+          createGithubReleases: true
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No NPM_TOKEN — Trusted Publishing on npm (per-package, see
+          # documents/design/release-runbook.md §9) + `id-token: write` above
+          # mints a short-lived OIDC token at publish time.
           NPM_CONFIG_PROVENANCE: true
