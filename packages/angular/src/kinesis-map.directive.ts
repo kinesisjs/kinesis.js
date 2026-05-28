@@ -133,6 +133,13 @@ export class KinesisMapDirective implements OnInit {
    */
   @Input() warningOpacity?: number;
 
+  /**
+   * Run the tick loop inside a Web Worker (the OpenLayers adapter stays on the
+   * main thread). `true` uses the inlined worker; `{ url }` loads a bundled
+   * worker script you host. See `TrackerOptions.worker`. Default: off.
+   */
+  @Input() worker?: boolean | { url: string | URL };
+
   /** Adapter to use. Currently only 'openlayers'; 'leaflet' is planned for v0.3. */
   @Input() adapter = 'openlayers' as const;
 
@@ -160,6 +167,7 @@ export class KinesisMapDirective implements OnInit {
       ...(this.initialPositionBehavior !== undefined
         ? { initialPositionBehavior: this.initialPositionBehavior }
         : {}),
+      ...(this.worker !== undefined ? { worker: this.worker } : {}),
     };
     this.trackerInstance = new Tracker(trackerOpts);
 

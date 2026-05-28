@@ -1,5 +1,6 @@
 ---
 '@kinesisjs/core': minor
+'@kinesisjs/angular': minor
 ---
 
 Add opt-in Web Worker mode (`worker: true` or `worker: { url }`).
@@ -15,7 +16,8 @@ messages the worker streams back, so existing adapters work unchanged.
   avoiding the inline payload.
 
 The public API is unchanged — `new Tracker({ worker: true })` transparently
-returns a worker-backed tracker with the same surface.
+returns a worker-backed tracker with the same surface. `@kinesisjs/angular`'s
+`[kinesisMap]` directive exposes it via a new `[worker]` input.
 
 Caveats: a `CustomInterpolator` isn't supported in worker mode (functions
 can't cross the worker boundary; construction throws), `updateOpacity`-based
