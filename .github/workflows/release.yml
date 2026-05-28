@@ -70,8 +70,7 @@ jobs:
         # github-actions[bot]` internally and overrides this. To keep the bot
         # off the Contributors list, merge the "Version Packages" PR with
         # "Squash and merge" (the squashed commit is authored by the merger,
-        # not the bot). `.mailmap` additionally remaps the historical bot
-        # commits for local `git log`/`git shortlog` output.
+        # not the bot).
         run: |
           git config user.name "Muzaffer AŞKAR"
           git config user.email "muh.muzafferaskar@gmail.com"
