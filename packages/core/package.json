@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/core",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "TypeScript-first, framework-agnostic vehicle interpolation engine — core",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
