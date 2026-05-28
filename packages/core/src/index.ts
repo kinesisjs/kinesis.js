@@ -1,5 +1,6 @@
 // Classes
 export { Tracker } from './tracker';
+export { WorkerTracker } from './worker-host';
 export { Clock } from './clock';
 export { Interpolator } from './interpolator';
 export { AdaptiveInterpolator } from './adaptive-interpolator';

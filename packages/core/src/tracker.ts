@@ -4,6 +4,7 @@ import { EventBus } from './event-bus';
 import { Interpolator } from './interpolator';
 import { haversineDistance, linearLerp, shortestArcDiff } from './math-utils';
 import { Sweeper } from './sweeper';
+import { WorkerTracker } from './worker-host';
 import type {
   CustomInterpolator,
   InterpolationOptions,
@@ -36,9 +37,13 @@ export class Tracker {
 
   private readonly slots = new Map<string, VehicleSlot>();
   private readonly events = new EventBus<TrackerEventMap>();
-  private readonly clock: Clock;
-  private readonly interpolator: Interpolator | AdaptiveInterpolator | CustomInterpolator;
-  private readonly sweeper: Sweeper;
+  // Definite-assignment (`!`): these are assigned in the constructor's normal
+  // path. In worker mode the constructor returns a WorkerTracker before
+  // reaching that path, so they stay unset — but the returned object is a
+  // WorkerTracker and never touches them.
+  private readonly clock!: Clock;
+  private readonly interpolator!: Interpolator | AdaptiveInterpolator | CustomInterpolator;
+  private readonly sweeper!: Sweeper;
   private readonly tickHistory = new Float32Array(Tracker.TICK_HISTORY_SIZE);
   private readonly droppedTickRecent: number[] = [];
   private readonly ingestTimestamps: number[] = [];
@@ -47,12 +52,20 @@ export class Tracker {
     { from: TrailPoint; to: TrailPoint; result?: TrailPoint }
   >();
 
-  private stats: TrackerStats;
+  private stats!: TrackerStats;
   private isRunning = false;
   private startedAt = 0;
   private tickHistoryIndex = 0;
 
   constructor(private readonly options: TrackerOptions) {
+    if (options.worker) {
+      // Worker mode: return a WorkerTracker transparently. A constructor may
+      // return an object, which becomes the `new` result; WorkerTracker
+      // mirrors this class's public surface, so callers see no API difference.
+      // Field initializers above still run (cheap, discarded), but the heavy
+      // setup below (Clock, Sweeper, interpolator) is skipped.
+      return new WorkerTracker(options) as unknown as Tracker;
+    }
     this.interpolator = this.buildInterpolator();
     // We swallow the performance.now()-based timestamp the Clock hands back and
     // rely on Date.now() inside tick() instead, because slot.receivedAt is also

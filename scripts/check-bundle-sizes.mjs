@@ -10,9 +10,13 @@ import { gzipSync } from 'node:zlib';
 
 const BUDGETS = [
   {
+    // Bumped from 7 → 9 KB in v0.3.0: worker mode inlines the bundled
+    // worker-script as a string (so `worker: true` needs zero consumer setup),
+    // which adds ~2.4 KB gzip. Consumers who don't use worker mode still carry
+    // it today; a future tree-shakeable split could reclaim it.
     name: '@kinesisjs/core (ESM)',
     path: 'packages/core/dist/index.js',
-    limitKB: 7,
+    limitKB: 9,
   },
   {
     name: '@kinesisjs/openlayers (ESM)',

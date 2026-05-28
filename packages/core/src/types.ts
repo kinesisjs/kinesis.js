@@ -204,8 +204,28 @@ export interface TrackerOptions {
    */
   renderLagMs?: number;
 
-  /** Run inside a Web Worker. Default: false (detailed in v0.2.x+). */
-  worker?: boolean;
+  /**
+   * Run the tick loop (interpolation, sanity checks, sweeper) inside a Web
+   * Worker, off the main thread. The adapter stays on the main thread and is
+   * driven by messages the worker streams back, so the UI thread only does
+   * the actual DOM/map writes.
+   *
+   * - `false` (default): everything runs on the main thread.
+   * - `true`: spin up the worker from an inlined Blob — zero setup, but adds
+   *   the worker bundle (~a few KB) to the main package.
+   * - `{ url }`: load the bundled worker script from a URL you control (e.g.
+   *   `new URL('./kinesis.worker.js', import.meta.url)`), avoiding the inline
+   *   payload.
+   *
+   * Worker-mode caveats:
+   * - A `CustomInterpolator` is not supported (functions can't cross the
+   *   worker boundary) — construction throws if both are set.
+   * - `updateOpacity`-based fade animations degrade to snapping (rAF is a
+   *   main-thread concern).
+   * - `getStats()` returns a snapshot refreshed every ~30 ticks, so it lags
+   *   real time slightly.
+   */
+  worker?: boolean | { url: string | URL };
 
   /** Adapter instance. */
   adapter: TrackAdapter;
