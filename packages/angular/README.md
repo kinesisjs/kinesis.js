@@ -87,17 +87,24 @@ export class TrackingService {
 
 ## Directive inputs
 
-| Input                 | Type                                                                              | Default        | Description                  |
-| --------------------- | --------------------------------------------------------------------------------- | -------------- | ---------------------------- |
-| `positions` ⭐        | `Signal<Position[]> \| Observable<Position[]>`                                    | —              | Position source (required)   |
-| `center`              | `[number, number]`                                                                | `[29.0, 41.0]` | Initial map centre (lng/lat) |
-| `zoom`                | `number`                                                                          | `10`           | Initial zoom                 |
-| `interpolation`       | `'linear' \| 'cubic' \| 'geodesic' \| 'none' \| 'adaptive' \| CustomInterpolator` | `'linear'`     | Interpolation behaviour      |
-| `maxInterpolationGap` | `number`                                                                          | `30000`        | Milliseconds                 |
-| `warningThreshold`    | `number`                                                                          | `60000`        | Milliseconds                 |
-| `staleThreshold`      | `number`                                                                          | `600000`       | Milliseconds                 |
-| `ingestThrottle`      | `number`                                                                          | `100`          | Milliseconds                 |
-| `vehicleStyle`        | `VehicleStyleProvider`                                                            | —              | OpenLayers style provider    |
+| Input                     | Type                                                                              | Default        | Description                                              |
+| ------------------------- | --------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------- |
+| `positions` ⭐            | `Signal<Position[]> \| Observable<Position[]>`                                    | —              | Position source (required)                               |
+| `center`                  | `[number, number]`                                                                | `[29.0, 41.0]` | Initial map centre (lng/lat)                             |
+| `zoom`                    | `number`                                                                          | `10`           | Initial zoom                                             |
+| `interpolation`           | `'linear' \| 'cubic' \| 'geodesic' \| 'none' \| 'adaptive' \| CustomInterpolator` | `'linear'`     | Interpolation behaviour                                  |
+| `renderLagMs`             | `number`                                                                          | `1000`         | Render-buffer lag (ms); `0` disables real-time interp    |
+| `maxInterpolationGap`     | `number`                                                                          | `30000`        | Skip interpolation past this gap (ms)                    |
+| `warningThreshold`        | `number`                                                                          | `60000`        | Idle ms before `warning` state                           |
+| `staleThreshold`          | `number`                                                                          | `600000`       | Idle ms before `stale` removal                           |
+| `ingestThrottle`          | `number`                                                                          | `100`          | Min ms between ingests per vehicle                       |
+| `adaptive`                | `AdaptiveOptions`                                                                 | —              | Zone thresholds for `interpolation: 'adaptive'`          |
+| `fadeAnimation`           | `FadeAnimationOptions`                                                            | —              | Fade duration/easing (adaptive `fade` zone)              |
+| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'`                            | —              | Behaviour on a vehicle's first position                  |
+| `vehicleStyle`            | `VehicleStyleProvider`                                                            | —              | OpenLayers style provider                                |
+| `trail`                   | `TrailRenderOptions`                                                              | —              | Fading per-vehicle trail (`[trail]="{ enabled: true }"`) |
+| `warningOpacity`          | `number`                                                                          | —              | Dim opacity (0–1) while a vehicle is in `warning`        |
+| `worker`                  | `boolean \| { url: string \| URL }`                                               | `false`        | Run the tick loop in a Web Worker                        |
 
 ## Accessing the tracker
 

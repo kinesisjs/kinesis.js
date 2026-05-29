@@ -69,6 +69,7 @@ export default defineConfig({
           items: [
             { text: 'Architecture', link: '/concepts/architecture' },
             { text: 'Interpolation', link: '/concepts/interpolation' },
+            { text: 'Web Worker mode', link: '/concepts/web-worker' },
             { text: 'Limitations', link: '/concepts/limitations' },
           ],
         },

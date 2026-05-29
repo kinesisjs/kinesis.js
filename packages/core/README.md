@@ -16,6 +16,7 @@ Mathematical engine for smooth movement between periodic position updates. No de
 
 - **rAF-based clock** — 60fps tick, no tab-background catch-up jumps
 - **Interpolation modes** — linear, cubic, geodesic, none, adaptive
+- **Web Worker mode** — `worker: true` runs the tick loop off the main thread (adapter stays on it)
 - **Bounded memory** — ring slot pattern, allocation-free hot path
 - **Multi-state lifecycle** — `active` / `warning` / `stale` / `completed` + `markCompleted` API
 - **Sanity checks** — anomalous-jump (distance vs. speed) and sharp-turn (heading) detection
@@ -76,7 +77,7 @@ tracker.ingest(positions);
 
 ```ts
 // Classes
-export { Tracker, Clock, Interpolator, AdaptiveInterpolator, EventBus, Sweeper };
+export { Tracker, WorkerTracker, Clock, Interpolator, AdaptiveInterpolator, EventBus, Sweeper };
 
 // Utilities
 export { haversineDistance, shortestArcDiff, linearLerp };
