@@ -22,7 +22,15 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['packages/*/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.spec.ts', '**/*.bench.ts', '**/index.ts', '**/types.ts'],
+      exclude: [
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/*.bench.ts',
+        '**/index.ts',
+        '**/types.ts',
+        // Type-only module (postMessage protocol) — no executable statements.
+        '**/worker-protocol.ts',
+      ],
       thresholds: {
         lines: 80,
         functions: 80,

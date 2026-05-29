@@ -78,6 +78,32 @@ describe('worker-script', () => {
     }).not.toThrow();
   });
 
+  it('markCompleted removes the vehicle and flushes a removeVehicle adapter call', () => {
+    send({ type: 'init', options: { initialPositionBehavior: 'show-immediately' } });
+    send({ type: 'ingest', positions: [{ id: 'v1', lng: 29, lat: 41 }] });
+    posted.length = 0;
+    send({ type: 'markCompleted', vehicleId: 'v1' });
+
+    const adapterMsg = posted.find((m) => m.type === 'adapter');
+    expect(adapterMsg).toBeDefined();
+    if (adapterMsg?.type === 'adapter') {
+      expect(adapterMsg.calls).toContainEqual({ call: 'removeVehicle', id: 'v1' });
+    }
+  });
+
+  it('removeVehicle flushes a removeVehicle adapter call', () => {
+    send({ type: 'init', options: { initialPositionBehavior: 'show-immediately' } });
+    send({ type: 'ingest', positions: [{ id: 'v1', lng: 29, lat: 41 }] });
+    posted.length = 0;
+    send({ type: 'removeVehicle', vehicleId: 'v1' });
+
+    const adapterMsg = posted.find((m) => m.type === 'adapter');
+    expect(adapterMsg).toBeDefined();
+    if (adapterMsg?.type === 'adapter') {
+      expect(adapterMsg.calls).toContainEqual({ call: 'removeVehicle', id: 'v1' });
+    }
+  });
+
   it('destroy tears down and ignores subsequent ingest', () => {
     send({ type: 'init', options: {} });
     send({ type: 'ingest', positions: [{ id: 'v1', lng: 29, lat: 41 }] });
