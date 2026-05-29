@@ -154,6 +154,7 @@ export class Tracker {
     });
   }
 
+  /** Start the tick loop and the stale-sweeper. Idempotent. Emits `start`. */
   start(): void {
     if (this.isRunning) return;
     this.isRunning = true;
@@ -163,6 +164,7 @@ export class Tracker {
     this.events.emit('start');
   }
 
+  /** Pause the tick loop and sweeper without tearing anything down. Emits `stop`. */
   stop(): void {
     if (!this.isRunning) return;
     this.isRunning = false;
@@ -171,6 +173,11 @@ export class Tracker {
     this.events.emit('stop');
   }
 
+  /**
+   * Tear everything down: stop the loops, clear all slots, call
+   * `adapter.destroy()` and the CustomInterpolator's `dispose()`, and drop all
+   * listeners. Emits `destroy` (then removes listeners). Not reusable afterward.
+   */
   destroy(): void {
     this.stop();
     this.slots.clear();
@@ -189,6 +196,10 @@ export class Tracker {
     this.events.removeAllListeners();
   }
 
+  /**
+   * Subscribe to a tracker event. Returns an unsubscribe function — call it to
+   * remove the handler (or rely on `destroy()`, which drops every listener).
+   */
   on<K extends keyof TrackerEventMap>(
     event: K,
     handler: (payload: TrackerEventMap[K]) => void,
@@ -213,6 +224,11 @@ export class Tracker {
     return true;
   }
 
+  /**
+   * Remove a vehicle immediately (e.g. user dismissed it). Calls
+   * `adapter.removeVehicle` and emits `vehicleremoved`. Returns `false` if the
+   * id is unknown. For a planned end-of-shift, prefer {@link markCompleted}.
+   */
   removeVehicle(vehicleId: string): boolean {
     if (!this.slots.has(vehicleId)) return false;
     this.slots.delete(vehicleId);
@@ -231,6 +247,11 @@ export class Tracker {
     return true;
   }
 
+  /**
+   * Snapshot of runtime telemetry (vehicle count, fps, tick p50/p95/p99,
+   * dropped ticks, ingest rate, memory breakdown). Recomputed on each call and
+   * returned frozen. Foundation for the planned devtools panel.
+   */
   getStats(): Readonly<TrackerStats> {
     this.refreshStats();
     return Object.freeze({ ...this.stats });
