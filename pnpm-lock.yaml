@@ -145,9 +145,15 @@ importers:
       '@kinesisjs/core':
         specifier: workspace:*
         version: link:../core
+      '@kinesisjs/leaflet':
+        specifier: workspace:*
+        version: link:../leaflet
       '@kinesisjs/openlayers':
         specifier: workspace:*
         version: link:../openlayers
+      leaflet:
+        specifier: '>=1.7.0'
+        version: 1.9.4
       ol:
         specifier: '>=8.0.0'
         version: 10.9.0

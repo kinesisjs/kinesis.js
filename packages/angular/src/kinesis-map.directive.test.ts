@@ -19,6 +19,7 @@ vi.mock('ol/Map', () => ({
       const idx = this._layers.indexOf(layer);
       if (idx !== -1) this._layers.splice(idx, 1);
     }
+    setTarget(_target: unknown): void {}
     dispose(): void {}
     getLayers(): { getArray(): unknown[] } {
       return { getArray: () => this._layers };
@@ -42,6 +43,41 @@ vi.mock('ol/source/OSM', () => ({
   default: class FakeOSM {
     constructor() {}
   },
+}));
+
+// Leaflet runtime — only what the directive itself calls. The adapter is
+// mocked below so its internal layerGroup/marker chain is not exercised here.
+interface FakeLeafletMap {
+  setView(): FakeLeafletMap;
+  remove(): void;
+}
+const fakeLeafletMap: FakeLeafletMap = {
+  setView(): FakeLeafletMap {
+    return fakeLeafletMap;
+  },
+  remove(): void {},
+};
+vi.mock('leaflet', () => ({
+  map: () => fakeLeafletMap,
+  tileLayer: () => ({ addTo: () => fakeLeafletMap }),
+}));
+
+// Stub the Leaflet adapter — the directive treats it as an opaque TrackAdapter.
+vi.mock('@kinesisjs/leaflet', () => ({
+  LeafletAdapter: class FakeLeafletAdapter {
+    constructor(_map: unknown, _opts?: unknown) {}
+    addVehicle(): void {}
+    updatePosition(): void {}
+    removeVehicle(): void {}
+    destroy(): void {}
+    updateOpacity(): void {}
+    setVehicleState(): void {}
+    getMemoryEstimate(): number {
+      return 0;
+    }
+  },
+  createVehicleStyle: () => (): { options: unknown } => ({ options: {} }),
+  colorForSpeed: (): string => '#000',
 }));
 
 // Imports below MUST come after vi.mock calls — vitest hoists mocks but explicit ordering is clearer.
@@ -193,5 +229,66 @@ describe('KinesisMapDirective', () => {
     fixture.detectChanges();
     const stats = directive.getTracker()!.getStats();
     expect(stats.vehicleCount).toBe(1);
+  });
+});
+
+@Component({
+  standalone: true,
+  imports: [KinesisMapDirective],
+  template: `<div
+    kinesisMap
+    [adapter]="'leaflet'"
+    [positions]="positions"
+    #ref="kinesisMap"
+    style="width:200px;height:200px"
+  ></div>`,
+})
+class LeafletHostComponent {
+  positions = signal<Position[]>([]);
+}
+
+describe('KinesisMapDirective — Leaflet adapter', () => {
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('creates the directive on the Leaflet path with a tracker and a map', () => {
+    TestBed.configureTestingModule({ imports: [LeafletHostComponent] });
+    const fixture = TestBed.createComponent(LeafletHostComponent);
+    fixture.detectChanges();
+
+    const directive = fixture.debugElement.children[0]!.references['ref'] as KinesisMapDirective;
+    expect(directive).toBeDefined();
+    expect(directive.getTracker()).toBeInstanceOf(Tracker);
+    expect(directive.getMap()).toBe(fakeLeafletMap);
+  });
+
+  it('forwards Signal updates into the Tracker when using Leaflet', () => {
+    TestBed.configureTestingModule({ imports: [LeafletHostComponent] });
+    const fixture = TestBed.createComponent(LeafletHostComponent);
+    fixture.detectChanges();
+    const host = fixture.componentInstance;
+    const directive = fixture.debugElement.children[0]!.references['ref'] as KinesisMapDirective;
+    const tracker = directive.getTracker()!;
+
+    host.positions.set([{ id: 'v1', lng: 29, lat: 41 }]);
+    fixture.detectChanges();
+
+    expect(tracker.getStats().vehicleCount).toBe(1);
+  });
+
+  it('destroys the Tracker and the Leaflet map when the host is torn down', () => {
+    TestBed.configureTestingModule({ imports: [LeafletHostComponent] });
+    const fixture = TestBed.createComponent(LeafletHostComponent);
+    fixture.detectChanges();
+    const directive = fixture.debugElement.children[0]!.injector.get(KinesisMapDirective);
+    const destroyHandler = vi.fn();
+    directive.getTracker()!.on('destroy', destroyHandler);
+
+    fixture.destroy();
+
+    expect(destroyHandler).toHaveBeenCalledTimes(1);
+    expect(directive.getTracker()).toBeUndefined();
+    expect(directive.getMap()).toBeUndefined();
   });
 });

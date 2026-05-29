@@ -2,8 +2,11 @@ import { DestroyRef, Injector, effect, inject, isSignal, type Signal } from '@an
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isObservable, type Observable } from 'rxjs';
 import { Tracker } from '@kinesisjs/core';
-import { OpenLayersAdapter } from '@kinesisjs/openlayers';
-import type { Position } from '@kinesisjs/core';
+import type { Position, TrackAdapter } from '@kinesisjs/core';
+import { OpenLayersAdapter, type OpenLayersAdapterOptions } from '@kinesisjs/openlayers';
+import { LeafletAdapter, type LeafletAdapterOptions } from '@kinesisjs/leaflet';
+import type OLMap from 'ol/Map';
+import type { Map as LeafletMap } from 'leaflet';
 import type { KinesisTrackerConfig } from './types';
 
 /**
@@ -18,6 +21,7 @@ import type { KinesisTrackerConfig } from './types';
  *   private readonly positions = inject(PositionsService).positions;
  *
  *   tracker = kinesisTracker({ map: this.map, positions: this.positions });
+ *   // Leaflet: kinesisTracker({ map, positions, adapter: 'leaflet' });
  * }
  * ```
  *
@@ -28,7 +32,7 @@ export function kinesisTracker(config: KinesisTrackerConfig): Tracker {
   const destroyRef = inject(DestroyRef);
   const injector = inject(Injector);
 
-  const adapter = new OpenLayersAdapter(config.map, config.adapterOptions ?? {});
+  const adapter = buildAdapter(config);
   const tracker = new Tracker({
     adapter,
     interpolation: 'linear',
@@ -41,6 +45,20 @@ export function kinesisTracker(config: KinesisTrackerConfig): Tracker {
   destroyRef.onDestroy(() => tracker.destroy());
 
   return tracker;
+}
+
+function buildAdapter(config: KinesisTrackerConfig): TrackAdapter {
+  const kind = config.adapter ?? 'openlayers';
+  if (kind === 'leaflet') {
+    return new LeafletAdapter(
+      config.map as LeafletMap,
+      (config.adapterOptions as LeafletAdapterOptions | undefined) ?? {},
+    );
+  }
+  return new OpenLayersAdapter(
+    config.map as OLMap,
+    (config.adapterOptions as OpenLayersAdapterOptions | undefined) ?? {},
+  );
 }
 
 /**

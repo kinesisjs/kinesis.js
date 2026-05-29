@@ -14,24 +14,39 @@ import View from 'ol/View';
 import TileLayer from 'ol/layer/Tile';
 import OSM from 'ol/source/OSM';
 import { fromLonLat } from 'ol/proj';
+import { map as createLeafletMap, tileLayer as createLeafletTileLayer } from 'leaflet';
+import type { Map as LeafletMap } from 'leaflet';
 import { Tracker } from '@kinesisjs/core';
 import {
   OpenLayersAdapter,
-  type TrailRenderOptions,
-  type VehicleStyleProvider,
+  type TrailRenderOptions as OLTrailRenderOptions,
+  type VehicleStyleProvider as OLVehicleStyleProvider,
 } from '@kinesisjs/openlayers';
+import {
+  LeafletAdapter,
+  type TrailRenderOptions as LeafletTrailRenderOptions,
+  type VehicleStyleProvider as LeafletVehicleStyleProvider,
+} from '@kinesisjs/leaflet';
 import type {
   AdaptiveOptions,
   FadeAnimationOptions,
   InitialPositionBehavior,
   Position,
+  TrackAdapter,
   TrackerOptions,
 } from '@kinesisjs/core';
 import { bindPositions } from './kinesis-tracker.factory';
+import type { AdapterKind } from './types';
+
+interface Scene {
+  map: OLMap | LeafletMap;
+  adapter: TrackAdapter;
+  dispose: () => void;
+}
 
 /**
- * One-line setup: attaches an OpenLayers Map + a Kinesis.js Tracker to the
- * host element.
+ * One-line setup: attaches a map (OpenLayers or Leaflet) + a Kinesis.js
+ * Tracker to the host element.
  *
  * @example
  * ```ts
@@ -44,8 +59,8 @@ import { bindPositions } from './kinesis-tracker.factory';
  * }
  * ```
  *
- * For finer control (your own OL Map instance, extra layers, etc.) see the
- * `kinesisTracker(...)` factory.
+ * Switch to Leaflet with `[adapter]="'leaflet'"`. For finer control (your own
+ * map instance, extra layers, etc.) see the `kinesisTracker(...)` factory.
  */
 @Directive({
   selector: '[kinesisMap]',
@@ -60,7 +75,7 @@ export class KinesisMapDirective implements OnInit {
   /** Position source: `Signal<Position[]>` or `Observable<Position[]>`. */
   @Input({ required: true }) positions!: Signal<Position[]> | Observable<Position[]>;
 
-  /** Initial map center (lng, lat). Default: Istanbul. */
+  /** Initial map center as `[lng, lat]` — the directive swaps to `[lat, lng]` for Leaflet. Default: Istanbul. */
   @Input() center: [number, number] = [29.0, 41.0];
 
   /** Initial zoom level. Default: 10. */
@@ -111,51 +126,50 @@ export class KinesisMapDirective implements OnInit {
    */
   @Input() initialPositionBehavior?: InitialPositionBehavior;
 
-  /** Style provider — see the `createVehicleStyle()` helper. */
-  @Input() vehicleStyle?: VehicleStyleProvider;
+  /**
+   * Style provider for the chosen adapter — see `createVehicleStyle()` in
+   * `@kinesisjs/openlayers` or `@kinesisjs/leaflet`. Pass the one matching
+   * `[adapter]`; the value is forwarded to whichever adapter is constructed.
+   */
+  @Input() vehicleStyle?: OLVehicleStyleProvider | LeafletVehicleStyleProvider;
 
   /**
-   * Trail rendering — fading polyline behind each marker on a separate OL
-   * VectorLayer that sits below the vehicle layer. Opt in with
-   * `[trail]="{ enabled: true }"`. Full option surface lives in
-   * `@kinesisjs/openlayers` `TrailRenderOptions`.
+   * Trail rendering — a fading polyline behind each marker. Opt in with
+   * `[trail]="{ enabled: true }"`. The option shape is structurally identical
+   * for both adapters; the value is forwarded to the selected one.
    */
-  @Input() trail?: TrailRenderOptions;
+  @Input() trail?: OLTrailRenderOptions | LeafletTrailRenderOptions;
 
   /**
    * Gap visualization: when a vehicle transitions to `warning`, the marker
    * dims to this opacity (0–1). It recovers to 1.0 on the next ingest or on
    * a sweeper-detected recovery to `active`. If omitted, opacity stays
-   * untouched (backward compatible).
-   *
-   * Typical value: 0.5–0.7. Equivalent to
-   * `OpenLayersAdapterOptions.warningOpacity`.
+   * untouched (backward compatible). Typical value: 0.5–0.7.
    */
   @Input() warningOpacity?: number;
 
   /**
-   * Run the tick loop inside a Web Worker (the OpenLayers adapter stays on the
-   * main thread). `true` uses the inlined worker; `{ url }` loads a bundled
+   * Run the tick loop inside a Web Worker (the map adapter stays on the main
+   * thread). `true` uses the inlined worker; `{ url }` loads a bundled
    * worker script you host. See `TrackerOptions.worker`. Default: off.
    */
   @Input() worker?: boolean | { url: string | URL };
 
-  /** Adapter to use. Currently only 'openlayers'; 'leaflet' is planned for v0.3. */
-  @Input() adapter = 'openlayers' as const;
+  /**
+   * Map adapter to use — `'openlayers'` (default) or `'leaflet'`. The
+   * corresponding peer dependency (`ol` or `leaflet`) must be installed.
+   */
+  @Input() adapter: AdapterKind = 'openlayers';
 
-  private map?: OLMap;
+  private scene?: Scene;
   private trackerInstance?: Tracker;
 
   ngOnInit(): void {
-    this.map = this.createMap();
-    const mapAdapter = new OpenLayersAdapter(this.map, {
-      ...(this.vehicleStyle ? { style: this.vehicleStyle } : {}),
-      ...(this.trail ? { trail: this.trail } : {}),
-      ...(this.warningOpacity !== undefined ? { warningOpacity: this.warningOpacity } : {}),
-    });
+    this.scene =
+      this.adapter === 'leaflet' ? this.createLeafletScene() : this.createOpenLayersScene();
 
     const trackerOpts: TrackerOptions = {
-      adapter: mapAdapter,
+      adapter: this.scene.adapter,
       maxInterpolationGap: this.maxInterpolationGap,
       warningThreshold: this.warningThreshold,
       staleThreshold: this.staleThreshold,
@@ -183,13 +197,16 @@ export class KinesisMapDirective implements OnInit {
     return this.trackerInstance;
   }
 
-  /** Public: the OL Map instance — for adding custom layers, controls, or interactions. */
-  getMap(): OLMap | undefined {
-    return this.map;
+  /**
+   * Public: the underlying map instance. Narrow with the `adapter` you chose:
+   * an `ol/Map` when `[adapter]="'openlayers'"`, an `L.Map` when `'leaflet'`.
+   */
+  getMap(): OLMap | LeafletMap | undefined {
+    return this.scene?.map;
   }
 
-  private createMap(): OLMap {
-    return new OLMap({
+  private createOpenLayersScene(): Scene {
+    const map = new OLMap({
       target: this.el.nativeElement,
       layers: [new TileLayer({ source: new OSM() })],
       view: new View({
@@ -197,12 +214,47 @@ export class KinesisMapDirective implements OnInit {
         zoom: this.zoom,
       }),
     });
+    const adapter = new OpenLayersAdapter(map, {
+      ...(this.vehicleStyle ? { style: this.vehicleStyle as OLVehicleStyleProvider } : {}),
+      ...(this.trail ? { trail: this.trail as OLTrailRenderOptions } : {}),
+      ...(this.warningOpacity !== undefined ? { warningOpacity: this.warningOpacity } : {}),
+    });
+    return {
+      map,
+      adapter,
+      dispose: () => {
+        map.setTarget(undefined);
+        map.dispose();
+      },
+    };
+  }
+
+  private createLeafletScene(): Scene {
+    // Leaflet expects [lat, lng]; the directive's `center` input is documented
+    // as [lng, lat] (matching the OL convention), so swap on the way in.
+    const map = createLeafletMap(this.el.nativeElement).setView(
+      [this.center[1], this.center[0]],
+      this.zoom,
+    );
+    createLeafletTileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(
+      map,
+    );
+    const adapter = new LeafletAdapter(map, {
+      ...(this.vehicleStyle ? { style: this.vehicleStyle as LeafletVehicleStyleProvider } : {}),
+      ...(this.trail ? { trail: this.trail as LeafletTrailRenderOptions } : {}),
+      ...(this.warningOpacity !== undefined ? { warningOpacity: this.warningOpacity } : {}),
+    });
+    return {
+      map,
+      adapter,
+      dispose: () => map.remove(),
+    };
   }
 
   private cleanup(): void {
     this.trackerInstance?.destroy();
-    this.map?.dispose();
+    this.scene?.dispose();
     this.trackerInstance = undefined;
-    this.map = undefined;
+    this.scene = undefined;
   }
 }

@@ -5,5 +5,10 @@
   },
   "dest": "./dist",
   "assets": [],
-  "allowedNonPeerDependencies": ["@kinesisjs/core", "@kinesisjs/openlayers", "tslib"]
+  "allowedNonPeerDependencies": [
+    "@kinesisjs/core",
+    "@kinesisjs/leaflet",
+    "@kinesisjs/openlayers",
+    "tslib"
+  ]
 }

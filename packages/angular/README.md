@@ -16,17 +16,24 @@ Angular lifecycle and reactive-binding layer on top of `@kinesisjs/core` and `@k
 
 - **`KinesisMapDirective`** — standalone directive, one-line declarative setup
 - **`kinesisTracker`** factory — programmatic use inside services or route resolvers
+- **OpenLayers or Leaflet** — pick via `[adapter]="'openlayers' | 'leaflet'"`
 - Automatic binding for both `Signal<Position[]>` and `Observable<Position[]>`
 - Automatic teardown via `DestroyRef` — no manual `tracker.destroy()` required
 - Angular 17+ standalone APIs
 
 ## Installation
 
+Pick the adapter you'll use:
+
 ```bash
+# OpenLayers
 pnpm add @kinesisjs/core @kinesisjs/openlayers @kinesisjs/angular ol
+
+# Leaflet
+pnpm add @kinesisjs/core @kinesisjs/leaflet @kinesisjs/angular leaflet
 ```
 
-**Peer dependencies:** `@angular/core >=17`, `@angular/common >=17`, `rxjs >=7`, `ol >=8`.
+**Peer dependencies:** `@angular/core >=17`, `@angular/common >=17`, `rxjs >=7`. **`ol >=8` and `leaflet >=1.7` are both _optional_** — install whichever adapter(s) you use. Both map libraries touch `window` at import; if you SSR (Angular Universal), gate the directive to client-side rendering.
 
 ## Usage
 
@@ -62,6 +69,40 @@ export class LiveMapComponent {
 }
 ```
 
+### Switching to Leaflet
+
+Pass `[adapter]="'leaflet'"` and import Leaflet's CSS in your app's global styles (Leaflet needs it; OpenLayers ships its tiny CSS via the `ol/ol.css` import you do yourself). Same template, same inputs:
+
+```ts
+import 'leaflet/dist/leaflet.css';
+import { createVehicleStyle } from '@kinesisjs/leaflet';
+
+@Component({
+  template: `
+    <div
+      kinesisMap
+      [adapter]="'leaflet'"
+      [positions]="positions"
+      [interpolation]="'adaptive'"
+      [vehicleStyle]="lfStyle"
+      class="map-container"
+    ></div>
+  `,
+  imports: [KinesisMapDirective],
+  standalone: true,
+})
+export class LiveLeafletMapComponent {
+  positions = inject(PositionsService).positions;
+  lfStyle = createVehicleStyle({
+    speedColorBands: [
+      { max: 30, color: '#22c55e' },
+      { max: 80, color: '#eab308' },
+      { max: 130, color: '#ef4444' },
+    ],
+  });
+}
+```
+
 ### Programmatic factory
 
 Use `kinesisTracker(...)` when you need control outside a template — for example inside a service or route resolver, or when you manage the OpenLayers map yourself:
@@ -87,24 +128,25 @@ export class TrackingService {
 
 ## Directive inputs
 
-| Input                     | Type                                                                              | Default        | Description                                              |
-| ------------------------- | --------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------- |
-| `positions` ⭐            | `Signal<Position[]> \| Observable<Position[]>`                                    | —              | Position source (required)                               |
-| `center`                  | `[number, number]`                                                                | `[29.0, 41.0]` | Initial map centre (lng/lat)                             |
-| `zoom`                    | `number`                                                                          | `10`           | Initial zoom                                             |
-| `interpolation`           | `'linear' \| 'cubic' \| 'geodesic' \| 'none' \| 'adaptive' \| CustomInterpolator` | `'linear'`     | Interpolation behaviour                                  |
-| `renderLagMs`             | `number`                                                                          | `1000`         | Render-buffer lag (ms); `0` disables real-time interp    |
-| `maxInterpolationGap`     | `number`                                                                          | `30000`        | Skip interpolation past this gap (ms)                    |
-| `warningThreshold`        | `number`                                                                          | `60000`        | Idle ms before `warning` state                           |
-| `staleThreshold`          | `number`                                                                          | `600000`       | Idle ms before `stale` removal                           |
-| `ingestThrottle`          | `number`                                                                          | `100`          | Min ms between ingests per vehicle                       |
-| `adaptive`                | `AdaptiveOptions`                                                                 | —              | Zone thresholds for `interpolation: 'adaptive'`          |
-| `fadeAnimation`           | `FadeAnimationOptions`                                                            | —              | Fade duration/easing (adaptive `fade` zone)              |
-| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'`                            | —              | Behaviour on a vehicle's first position                  |
-| `vehicleStyle`            | `VehicleStyleProvider`                                                            | —              | OpenLayers style provider                                |
-| `trail`                   | `TrailRenderOptions`                                                              | —              | Fading per-vehicle trail (`[trail]="{ enabled: true }"`) |
-| `warningOpacity`          | `number`                                                                          | —              | Dim opacity (0–1) while a vehicle is in `warning`        |
-| `worker`                  | `boolean \| { url: string \| URL }`                                               | `false`        | Run the tick loop in a Web Worker                        |
+| Input                     | Type                                                                              | Default        | Description                                                 |
+| ------------------------- | --------------------------------------------------------------------------------- | -------------- | ----------------------------------------------------------- |
+| `positions` ⭐            | `Signal<Position[]> \| Observable<Position[]>`                                    | —              | Position source (required)                                  |
+| `adapter`                 | `'openlayers' \| 'leaflet'`                                                       | `'openlayers'` | Map adapter — install the matching peer (`ol` or `leaflet`) |
+| `center`                  | `[number, number]`                                                                | `[29.0, 41.0]` | Initial map centre (lng/lat) — swapped for Leaflet          |
+| `zoom`                    | `number`                                                                          | `10`           | Initial zoom                                                |
+| `interpolation`           | `'linear' \| 'cubic' \| 'geodesic' \| 'none' \| 'adaptive' \| CustomInterpolator` | `'linear'`     | Interpolation behaviour                                     |
+| `renderLagMs`             | `number`                                                                          | `1000`         | Render-buffer lag (ms); `0` disables real-time interp       |
+| `maxInterpolationGap`     | `number`                                                                          | `30000`        | Skip interpolation past this gap (ms)                       |
+| `warningThreshold`        | `number`                                                                          | `60000`        | Idle ms before `warning` state                              |
+| `staleThreshold`          | `number`                                                                          | `600000`       | Idle ms before `stale` removal                              |
+| `ingestThrottle`          | `number`                                                                          | `100`          | Min ms between ingests per vehicle                          |
+| `adaptive`                | `AdaptiveOptions`                                                                 | —              | Zone thresholds for `interpolation: 'adaptive'`             |
+| `fadeAnimation`           | `FadeAnimationOptions`                                                            | —              | Fade duration/easing (adaptive `fade` zone)                 |
+| `initialPositionBehavior` | `'show-immediately' \| 'wait-for-second' \| 'fade-in'`                            | —              | Behaviour on a vehicle's first position                     |
+| `vehicleStyle`            | OL `VehicleStyleProvider` \| Leaflet `VehicleStyleProvider`                       | —              | Style provider matching the chosen `[adapter]`              |
+| `trail`                   | `TrailRenderOptions` (OL or Leaflet — structurally identical)                     | —              | Fading per-vehicle trail (`[trail]="{ enabled: true }"`)    |
+| `warningOpacity`          | `number`                                                                          | —              | Dim opacity (0–1) while a vehicle is in `warning`           |
+| `worker`                  | `boolean \| { url: string \| URL }`                                               | `false`        | Run the tick loop in a Web Worker                           |
 
 ## Accessing the tracker
 

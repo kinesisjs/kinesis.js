@@ -51,14 +51,24 @@
   },
   "dependencies": {
     "@kinesisjs/core": "workspace:*",
+    "@kinesisjs/leaflet": "workspace:*",
     "@kinesisjs/openlayers": "workspace:*",
     "tslib": "^2.6.0"
   },
   "peerDependencies": {
     "@angular/common": ">=17.0.0",
     "@angular/core": ">=17.0.0",
+    "leaflet": ">=1.7.0",
     "ol": ">=8.0.0",
     "rxjs": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "leaflet": {
+      "optional": true
+    },
+    "ol": {
+      "optional": true
+    }
   },
   "publishConfig": {
     "access": "public"
