@@ -100,34 +100,6 @@ importers:
         specifier: ^0.15
         version: 0.15.1
 
-  apps/playground:
-    dependencies:
-      '@kinesisjs/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@kinesisjs/leaflet':
-        specifier: workspace:*
-        version: link:../../packages/leaflet
-      '@kinesisjs/openlayers':
-        specifier: workspace:*
-        version: link:../../packages/openlayers
-      leaflet:
-        specifier: ^1.9.4
-        version: 1.9.4
-      ol:
-        specifier: ^10.9.0
-        version: 10.9.0
-    devDependencies:
-      '@types/leaflet':
-        specifier: ^1.9.12
-        version: 1.9.21
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-      vite:
-        specifier: ^5.4.11
-        version: 5.4.21(@types/node@22.19.19)(less@4.6.4)(sass@1.99.0)
-
   documents:
     devDependencies:
       vitepress:
@@ -6666,7 +6638,8 @@ snapshots:
 
   typescript@5.8.3: {}
 
-  typescript@5.9.3: {}
+  typescript@5.9.3:
+    optional: true
 
   ufo@1.6.4: {}
 
