@@ -29,6 +29,11 @@ const BUDGETS = [
     limitKB: 2.5,
   },
   {
+    name: '@kinesisjs/route-aware (ESM)',
+    path: 'packages/route-aware/dist/index.js',
+    limitKB: 2.5,
+  },
+  {
     name: '@kinesisjs/angular (FESM2022)',
     path: 'packages/angular/dist/fesm2022/kinesisjs-angular.mjs',
     limitKB: 4,

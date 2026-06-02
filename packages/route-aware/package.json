@@ -1,0 +1,59 @@
+{
+  "name": "@kinesisjs/route-aware",
+  "version": "0.0.0",
+  "description": "Road-snapping interpolation for Kinesis.js — OSRM-backed CustomInterpolator with LRU cache",
+  "license": "MIT",
+  "author": "Muzaffer Aşkar",
+  "homepage": "https://github.com/kinesisjs/kinesis.js/tree/main/packages/route-aware#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kinesisjs/kinesis.js.git",
+    "directory": "packages/route-aware"
+  },
+  "bugs": {
+    "url": "https://github.com/kinesisjs/kinesis.js/issues"
+  },
+  "keywords": [
+    "fleet-tracking",
+    "vehicle-tracking",
+    "interpolation",
+    "route-aware",
+    "road-snapping",
+    "osrm",
+    "map-matching",
+    "real-time",
+    "kinesisjs"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run --root ../..",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kinesisjs/core": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

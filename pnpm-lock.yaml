@@ -158,6 +158,16 @@ importers:
         specifier: '>=8.0.0'
         version: 10.9.0
 
+  packages/route-aware:
+    dependencies:
+      '@kinesisjs/core':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      esbuild:
+        specifier: 0.25.12
+        version: 0.25.12
+
 packages:
 
   '@algolia/abtesting@1.18.1':
