@@ -51,7 +51,7 @@ export class LiveMapComponent {
 }
 ```
 
-**Vanilla TypeScript:**
+**Vanilla TypeScript (OpenLayers):**
 
 ```ts
 import { Tracker } from '@kinesisjs/core';
@@ -66,6 +66,29 @@ const tracker = new Tracker({
 
 tracker.start();
 tracker.ingest(positions); // call from your WebSocket handler
+```
+
+**Vanilla TypeScript (Leaflet):**
+
+```ts
+import { Tracker } from '@kinesisjs/core';
+import { LeafletAdapter, createVehicleStyle } from '@kinesisjs/leaflet';
+
+const tracker = new Tracker({
+  adapter: new LeafletAdapter(map, {
+    style: createVehicleStyle({
+      speedColorBands: [
+        { max: 30, color: '#22c55e' },
+        { max: 80, color: '#eab308' },
+        { max: 130, color: '#ef4444' },
+      ],
+    }),
+  }),
+  interpolation: 'adaptive',
+});
+
+tracker.start();
+tracker.ingest(positions);
 ```
 
 ## Why?
