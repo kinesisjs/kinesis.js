@@ -7,16 +7,24 @@
 
 ## Install from npm
 
-Full stack (Angular + OpenLayers):
+Pick an adapter; everything else hangs off it.
 
-```bash
-pnpm add @kinesisjs/core @kinesisjs/openlayers @kinesisjs/angular ol
-```
-
-OpenLayers without an Angular wrapper:
+OpenLayers:
 
 ```bash
 pnpm add @kinesisjs/core @kinesisjs/openlayers ol
+```
+
+Leaflet:
+
+```bash
+pnpm add @kinesisjs/core @kinesisjs/leaflet leaflet
+```
+
+With the Angular wrapper (OpenLayers stack):
+
+```bash
+pnpm add @kinesisjs/core @kinesisjs/openlayers @kinesisjs/angular ol
 ```
 
 Core only (you're writing your own adapter):
@@ -32,6 +40,7 @@ These are not bundled — your project supplies the version:
 | Package                 | Peer                               | Range      |
 | ----------------------- | ---------------------------------- | ---------- |
 | `@kinesisjs/openlayers` | `ol`                               | `>=8.0.0`  |
+| `@kinesisjs/leaflet`    | `leaflet`                          | `>=1.7.0`  |
 | `@kinesisjs/angular`    | `@angular/core`, `@angular/common` | `>=17.0.0` |
 | `@kinesisjs/angular`    | `rxjs`                             | `>=7.0.0`  |
 | `@kinesisjs/angular`    | `ol`                               | `>=8.0.0`  |
@@ -85,4 +94,5 @@ pnpm add /path/to/kinesisjs-core-<version>.tgz
 ## Next steps
 
 - [First map (Angular)](/guide/first-map-angular)
-- [First map (vanilla TypeScript)](/guide/first-map-vanilla)
+- [First map (vanilla TypeScript)](/guide/first-map-vanilla) — OpenLayers
+- [First map (Leaflet)](/guide/first-map-leaflet)
