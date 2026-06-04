@@ -11,6 +11,9 @@ export default defineConfig({
     alias: {
       '@kinesisjs/core': pkgSrc('./packages/core/src/index.ts'),
       '@kinesisjs/openlayers': pkgSrc('./packages/openlayers/src/index.ts'),
+      // Internal-only: cross-adapter parity harness. Resolved at test time;
+      // never bundled or published. See packages/core/src/test-utils/.
+      '@kinesisjs/test-utils': pkgSrc('./packages/core/src/test-utils/index.ts'),
     },
   },
   test: {
@@ -30,6 +33,9 @@ export default defineConfig({
         '**/types.ts',
         // Type-only module (postMessage protocol) — no executable statements.
         '**/worker-protocol.ts',
+        // Internal test harness — exercised through the adapter parity
+        // tests; counting it in coverage would skew the runtime-code metric.
+        '**/test-utils/**',
       ],
       thresholds: {
         lines: 80,
