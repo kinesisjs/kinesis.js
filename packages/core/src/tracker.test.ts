@@ -385,3 +385,99 @@ describe('Tracker render-lag (interpolation buffer)', () => {
     expect(lastCall?.[1].lng).toBeCloseTo(LNG_TO, 8);
   });
 });
+
+describe('Tracker interpolation: smooth', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('falls back to linear lerp for the first interpolated segment (no previous2)', () => {
+    // First two ingests give us slot.previous + slot.current. previous2
+    // is still null until the third ingest, so the smooth branch must
+    // not engage yet — output matches a linear lerp.
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'smooth',
+      renderLagMs: 1000,
+    });
+    t.ingest([{ id: 'v1', lng: 29, lat: 41 }]);
+    vi.setSystemTime(2000);
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0001 }]);
+
+    vi.setSystemTime(2500);
+    t.tickOnce();
+    const last = adapter.updatePosition.mock.calls.at(-1);
+    // Linear midpoint of (29,41) → (29.0001,41.0001) at ratio 0.5.
+    expect(last?.[1].lng).toBeCloseTo(29.00005, 8);
+    expect(last?.[1].lat).toBeCloseTo(41.00005, 8);
+  });
+
+  it('engages Catmull-Rom once a third ingest provides previous2', () => {
+    // After the third ingest, slot = { previous2, previous, current }.
+    // Interpolating between previous and current should now route through
+    // catmullRomLerp — its output diverges from a pure linear midpoint
+    // when the three control points are non-collinear.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'smooth',
+      renderLagMs: 1000,
+    });
+    // Three colinear-ish ingests with a bend at p2 (the upcoming
+    // `previous` once the third lands) so the spline visibly differs.
+    vi.setSystemTime(0);
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]);
+    vi.setSystemTime(1000);
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0 }]);
+    vi.setSystemTime(2000);
+    t.ingest([{ id: 'v1', lng: 29.0002, lat: 41.0002 }]);
+
+    vi.setSystemTime(2500);
+    t.tickOnce();
+    const last = adapter.updatePosition.mock.calls.at(-1);
+    // Linear midpoint of (29.0001,41.0) → (29.0002,41.0002) at ratio 0.5
+    // is (29.00015, 41.0001). The spline shapes the lat toward the
+    // outbound tangent, so the recorded lat must NOT equal the linear
+    // value to a strict tolerance.
+    expect(last?.[1].lat).not.toBe(41.0001);
+    // Sanity: longitude is close to the linear midpoint (geometry shifts
+    // primarily on the lat axis here).
+    expect(last?.[1].lng).toBeCloseTo(29.00015, 6);
+  });
+
+  it('falls back to linear when the previous2 → previous gap exceeds maxInterpolationGap', () => {
+    // previous2 ingested long before previous: a stale control point
+    // would warp the spline. Tracker drops it and uses linear instead.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'smooth',
+      renderLagMs: 1000,
+      maxInterpolationGap: 5_000,
+    });
+    vi.setSystemTime(0);
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]);
+    // 20 s gap — past the 5 s maxInterpolationGap budget.
+    vi.setSystemTime(20_000);
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0 }]);
+    vi.setSystemTime(21_000);
+    t.ingest([{ id: 'v1', lng: 29.0002, lat: 41.0002 }]);
+
+    vi.setSystemTime(21_500);
+    t.tickOnce();
+    const last = adapter.updatePosition.mock.calls.at(-1);
+    // With previous2 dropped, behaviour matches pure linear midpoint.
+    expect(last?.[1].lng).toBeCloseTo(29.00015, 8);
+    expect(last?.[1].lat).toBeCloseTo(41.0001, 8);
+  });
+});

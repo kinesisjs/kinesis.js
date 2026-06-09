@@ -2,7 +2,7 @@ import { AdaptiveInterpolator } from './adaptive-interpolator';
 import { Clock } from './clock';
 import { EventBus } from './event-bus';
 import { Interpolator } from './interpolator';
-import { haversineDistance, linearLerp, shortestArcDiff } from './math-utils';
+import { catmullRomLerp, haversineDistance, linearLerp, shortestArcDiff } from './math-utils';
 import { Sweeper } from './sweeper';
 import { WorkerTracker } from './worker-host';
 import type {
@@ -119,6 +119,11 @@ export class Tracker {
         continue;
       }
 
+      // 3-point sliding window: previous2 keeps the position before
+      // `previous` so 'smooth' interpolation has the tangent it needs at
+      // each waypoint. For modes that ignore it (linear/cubic/etc.) the
+      // extra ref costs one pointer per vehicle — negligible.
+      existing.previous2 = existing.previous;
       existing.previous = existing.current;
       existing.current = this.toTrailPoint(pos, now);
       existing.lastIngestAt = now;
@@ -336,6 +341,7 @@ export class Tracker {
         };
         const point = this.computeInterpolated(
           vehicleId,
+          slot.previous2,
           slot.previous,
           slot.current,
           ratio,
@@ -372,6 +378,7 @@ export class Tracker {
   private createSlot(pos: Position, now: number): void {
     const initial = this.toTrailPoint(pos, now);
     const slot: VehicleSlot = {
+      previous2: null,
       previous: null,
       current: initial,
       lastIngestAt: now,
@@ -421,12 +428,50 @@ export class Tracker {
 
   private computeInterpolated(
     vehicleId: string,
+    previous2: TrailPoint | null,
     from: TrailPoint,
     to: TrailPoint,
     ratio: number,
     opts: InterpolationOptions,
     forceCubic: boolean,
   ): TrailPoint | null {
+    // Built-in 'smooth' mode: 3-point centripetal Catmull-Rom over
+    // previous2 → from → to, with a mirror phantom for the trailing
+    // tangent. Falls through to the standard 2-point path when the
+    // history isn't there yet (third ingest hasn't landed) or the gap
+    // to previous2 is too stale to be a meaningful control point.
+    if (this.options.interpolation === 'smooth' && previous2) {
+      const maxGap = this.options.maxInterpolationGap ?? 30_000;
+      if (from.receivedAt - previous2.receivedAt <= maxGap) {
+        const phantom: TrailPoint = {
+          lng: 2 * to.lng - from.lng,
+          lat: 2 * to.lat - from.lat,
+          ts: 2 * to.ts - from.ts,
+          receivedAt: 2 * to.receivedAt - from.receivedAt,
+        };
+        if (to.heading !== undefined) phantom.heading = to.heading;
+        if (to.speed !== undefined) phantom.speed = to.speed;
+        try {
+          return catmullRomLerp(
+            previous2,
+            from,
+            to,
+            phantom,
+            ratio,
+            opts.shortestArcHeading ?? true,
+          );
+        } catch (err) {
+          this.emitError({
+            code: 'INTERPOLATION_ERROR',
+            message: 'catmullRomLerp failed; falling back to linear',
+            vehicleId,
+            cause: err instanceof Error ? err : new Error(String(err)),
+          });
+          // fall through to the standard path below
+        }
+      }
+    }
+
     const ci = this.asCustom();
     if (ci) {
       try {
