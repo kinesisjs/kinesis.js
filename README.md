@@ -12,13 +12,15 @@ A framework-agnostic interpolation engine for fleet tracking, telematics, ride-h
 
 ## Packages
 
-| Package                                          | Version                                                                                                               | Downloads                                                                                                             | Bundle                                                                                                                                               | Purpose                                            |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| [`@kinesisjs/core`](./packages/core)             | [![npm](https://img.shields.io/npm/v/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)             | [![dl](https://img.shields.io/npm/dm/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)             | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/core?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/core)             | Pure-TypeScript interpolation engine and lifecycle |
-| [`@kinesisjs/openlayers`](./packages/openlayers) | [![npm](https://img.shields.io/npm/v/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers) | [![dl](https://img.shields.io/npm/dm/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers) | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/openlayers?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/openlayers) | OpenLayers map adapter                             |
-| [`@kinesisjs/angular`](./packages/angular)       | [![npm](https://img.shields.io/npm/v/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)       | [![dl](https://img.shields.io/npm/dm/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)       | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/angular?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/angular)       | Angular 17+ Signals / RxJS wrapper                 |
+| Package                                            | Version                                                                                                                 | Downloads                                                                                                               | Bundle                                                                                                                                                 | Purpose                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| [`@kinesisjs/core`](./packages/core)               | [![npm](https://img.shields.io/npm/v/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)               | [![dl](https://img.shields.io/npm/dm/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)               | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/core?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/core)               | Pure-TypeScript interpolation engine and lifecycle |
+| [`@kinesisjs/openlayers`](./packages/openlayers)   | [![npm](https://img.shields.io/npm/v/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers)   | [![dl](https://img.shields.io/npm/dm/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers)   | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/openlayers?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/openlayers)   | OpenLayers map adapter                             |
+| [`@kinesisjs/leaflet`](./packages/leaflet)         | [![npm](https://img.shields.io/npm/v/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)         | [![dl](https://img.shields.io/npm/dm/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)         | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/leaflet?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/leaflet)         | Leaflet map adapter                                |
+| [`@kinesisjs/angular`](./packages/angular)         | [![npm](https://img.shields.io/npm/v/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)         | [![dl](https://img.shields.io/npm/dm/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)         | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/angular?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/angular)         | Angular 17+ Signals / RxJS wrapper                 |
+| [`@kinesisjs/route-aware`](./packages/route-aware) | [![npm](https://img.shields.io/npm/v/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware) | [![dl](https://img.shields.io/npm/dm/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware) | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/route-aware?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/route-aware) | Road-snapping interpolation (OSRM)                 |
 
-All three packages are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) and signed via sigstore — every release is cryptographically traceable to the GitHub Actions workflow that built it.
+All five packages are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) and signed via sigstore — every release is cryptographically traceable to the GitHub Actions workflow that built it.
 
 ## Quick start
 
@@ -54,15 +56,21 @@ tracker.start();
 tracker.ingest(positions); // call from your WebSocket handler
 ```
 
+Prefer Leaflet? `LeafletAdapter` from [`@kinesisjs/leaflet`](./packages/leaflet) is a drop-in replacement — same tracker, same options surface, different map library.
+
 ## Features
 
 - **Framework-agnostic core** — zero map or UI dependencies; adapters plug in
-- **Adaptive interpolation** — period-aware classifier picks between linear, fade, and snap behaviour per vehicle
+- **Six interpolation modes** — `linear`, `cubic`, `geodesic`, `smooth` (3-point Catmull-Rom), `none`, and a period-aware `adaptive` classifier that picks between linear, fade, and snap per vehicle
+- **Playout buffer** — `playout: 'auto'` (or `{ pace, bufferMs }`) re-times jittery ingest into a constant render tempo
+- **Web Worker mode** — `worker: true` runs the tick loop off the main thread; the adapter stays on it
+- **Road-snapping interpolation** — [`@kinesisjs/route-aware`](./packages/route-aware) follows the actual street network via OSRM instead of cutting straight lines
+- **Trails & gap visualisation** — fading per-vehicle polylines, plus `warningOpacity` dimming for vehicles that stop reporting
 - **Bounded memory** — ring slot pattern, no growth across long-running sessions
 - **Multi-state lifecycle** — `active` / `warning` / `stale` / `completed` events with typed payloads
 - **Sanity checks** — anomalous-jump (distance vs. speed) and sharp-turn (heading) detection out of the box
 - **Error-as-event** — public methods never throw; subscribe to the `error` channel instead
-- **Custom interpolator interface** — sync or async; ready for route-aware map matching in v0.4
+- **Custom interpolator interface** — sync or async; the extension point behind `@kinesisjs/route-aware`, open to your own
 - **TypeScript-first** — strict typings, dual ESM + CJS build, source maps shipped
 
 ## Performance
@@ -81,21 +89,27 @@ Run `pnpm test:bench` to reproduce on your hardware.
                    │ uses
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 2: Map adapter                                    │
-│  (@kinesisjs/openlayers, leaflet*, maplibre*, mapbox*)   │
+│  (@kinesisjs/openlayers, @kinesisjs/leaflet,             │
+│   maplibre*, mapbox*)                                    │
 └──────────────────┬───────────────────────────────────────┘
                    │ uses
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 1: Core engine                                    │
 │  (@kinesisjs/core)                                       │
 │  ─ Clock (rAF-based 60fps tick)                          │
-│  ─ Interpolator (linear / cubic / geodesic / adaptive)   │
+│  ─ Interpolator (linear/cubic/geodesic/smooth/adaptive)  │
 │  ─ Sweeper (multi-state lifecycle)                       │
 │  ─ EventBus (typed)                                      │
 │  ─ math-utils (haversine, shortest-arc, lerp)            │
+└──────────────────▲───────────────────────────────────────┘
+                   │ plugs in via CustomInterpolator
+┌──────────────────┴───────────────────────────────────────┐
+│  Interpolation plugin                                    │
+│  (@kinesisjs/route-aware — OSRM road snapping)           │
 └──────────────────────────────────────────────────────────┘
 ```
 
-`*` planned for v0.2 and later.
+`*` planned — see the roadmap below.
 
 ## Development
 
@@ -122,13 +136,14 @@ Requirements: Node `>=20`, pnpm `>=9`.
 
 ## Roadmap
 
-| Version | Focus                                                 |
-| ------- | ----------------------------------------------------- |
-| v0.1    | Core, OpenLayers adapter, Angular wrapper             |
-| v0.2    | Web Worker mode, gap visualisation                    |
-| v0.3    | Leaflet adapter                                       |
-| v0.4    | Route-aware interpolation (OSRM, Mapbox Map Matching) |
-| v1.0+   | MapLibre, Mapbox GL, React, Vue, Svelte, and more     |
+| Version | Focus                                                | Status                                |
+| ------- | ---------------------------------------------------- | ------------------------------------- |
+| v0.1    | Core, OpenLayers adapter, Angular wrapper            | ✅ Shipped                            |
+| v0.2    | Web Worker mode, gap visualisation                   | ✅ Shipped                            |
+| v0.3    | Leaflet adapter                                      | ✅ Shipped (`@kinesisjs/leaflet`)     |
+| v0.4    | Route-aware interpolation (OSRM)                     | ✅ Shipped (`@kinesisjs/route-aware`) |
+| v0.5    | `smooth` interpolation (Catmull-Rom), playout buffer | ✅ Shipped (`@kinesisjs/core@0.5`)    |
+| v1.0+   | MapLibre, Mapbox GL, React, Vue, Svelte, and more    | Planned                               |
 
 ## Contributing
 

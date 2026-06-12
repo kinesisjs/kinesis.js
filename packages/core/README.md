@@ -15,15 +15,16 @@ Mathematical engine for smooth movement between periodic position updates. No de
 ## Scope
 
 - **rAF-based clock** — 60fps tick, no tab-background catch-up jumps
-- **Interpolation modes** — linear, cubic, geodesic, none, adaptive
+- **Interpolation modes** — linear, cubic, geodesic, smooth (3-point Catmull-Rom), none, adaptive
+- **Playout buffer** — `playout: { pace, bufferMs } | 'auto'` re-times jittery ingest into a constant per-segment render pace
 - **Web Worker mode** — `worker: true` runs the tick loop off the main thread (adapter stays on it)
 - **Bounded memory** — ring slot pattern, allocation-free hot path
 - **Multi-state lifecycle** — `active` / `warning` / `stale` / `completed` + `markCompleted` API
 - **Sanity checks** — anomalous-jump (distance vs. speed) and sharp-turn (heading) detection
 - **Typed event bus** — `tick`, `vehicleadded`, `vehiclewarning`, `vehiclestale`, `vehiclecompleted`, `vehicleremoved`, `ingest`, `error`
 - **`TrackAdapter` interface** — map adapters implement this contract
-- **`CustomInterpolator` interface** — sync/async; foundation for route-aware extensions
-- **`math-utils`** — `haversineDistance`, `shortestArcDiff`, `linearLerp` as public exports
+- **`CustomInterpolator` interface** — sync/async; the extension point behind `@kinesisjs/route-aware`
+- **`math-utils`** — `haversineDistance`, `shortestArcDiff`, `linearLerp`, `catmullRomLerp` as public exports
 
 ## Out of scope
 
@@ -73,6 +74,18 @@ const positions: Position[] = [{ id: 'v1', lng: 29, lat: 41 }];
 tracker.ingest(positions);
 ```
 
+### Jittery feeds
+
+When the gap between fixes varies (e.g. 0.5–3 s), pair the playout buffer with smooth interpolation — `smooth` shapes the geometry (no kinks at waypoints), playout flattens the tempo:
+
+```ts
+const tracker = new Tracker({
+  adapter: new MyAdapter(),
+  interpolation: 'smooth', // 3-point Catmull-Rom
+  playout: 'auto', // measure ingest cadence, equalise the render pace
+});
+```
+
 ## Public API
 
 ```ts
@@ -80,7 +93,7 @@ tracker.ingest(positions);
 export { Tracker, WorkerTracker, Clock, Interpolator, AdaptiveInterpolator, EventBus, Sweeper };
 
 // Utilities
-export { haversineDistance, shortestArcDiff, linearLerp };
+export { catmullRomLerp, haversineDistance, linearLerp, shortestArcDiff };
 
 // Types
 export type {
@@ -102,6 +115,8 @@ export type {
   TrackerError,
   TrackerErrorCode,
   FadeAnimationOptions,
+  PlayoutOptions,
+  PlayoutQueueEntry,
 };
 ```
 

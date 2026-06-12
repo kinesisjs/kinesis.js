@@ -5,6 +5,8 @@
 [![npm](https://img.shields.io/npm/v/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware)
 [![Downloads](https://img.shields.io/npm/dm/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware)
 [![Bundle size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/route-aware?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/route-aware)
+[![Provenance](https://img.shields.io/badge/npm%20provenance-signed-brightgreen.svg?logo=sigstore&logoColor=white)](https://www.npmjs.com/package/@kinesisjs/route-aware)
+[![Changelog](https://img.shields.io/badge/changelog-keep%20a%20changelog-blue)](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 A `CustomInterpolator` for `@kinesisjs/core` that asks an OSRM server "what's the real road between these two points?", caches the answer, and interpolates along that polyline instead of a straight line. The tick is **never blocked**: lookups happen in the background; the live loop falls back to linear lerp until the cache is warm.
