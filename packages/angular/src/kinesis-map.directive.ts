@@ -140,6 +140,21 @@ export class KinesisMapDirective implements OnInit {
    */
   @Input() worker?: boolean | { url: string | URL };
 
+  /**
+   * Playout buffer for jittery feeds — turns variable arrival rate into a
+   * constant display pace at the cost of `bufferMs` perceived latency.
+   *
+   * - Object: `{ pace, bufferMs, maxQueue? }` when you know your feed's
+   *   worst-case gap. Pick `bufferMs ≥ worstCaseGap` to avoid underrun.
+   * - `'auto'`: Tracker measures the last ~10 ingest gaps per vehicle
+   *   and calibrates `pace = avg`, `bufferMs = max × 1.5`.
+   *
+   * Best paired with `[interpolation]="'smooth'"`: smooth shapes the
+   * geometry (kinks at waypoints), playout flattens the tempo. See
+   * `TrackerOptions.playout`. Default: off (classical real-time path).
+   */
+  @Input() playout?: TrackerOptions['playout'];
+
   /** Adapter to use. Currently only 'openlayers'; 'leaflet' is planned for v0.3. */
   @Input() adapter = 'openlayers' as const;
 
@@ -168,6 +183,7 @@ export class KinesisMapDirective implements OnInit {
         ? { initialPositionBehavior: this.initialPositionBehavior }
         : {}),
       ...(this.worker !== undefined ? { worker: this.worker } : {}),
+      ...(this.playout !== undefined ? { playout: this.playout } : {}),
     };
     this.trackerInstance = new Tracker(trackerOpts);
 
