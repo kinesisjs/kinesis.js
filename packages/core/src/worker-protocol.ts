@@ -18,7 +18,7 @@ import type { Position, TrackerEventMap, TrackerStats, TrailPoint, VehicleState 
  * before we ever build this.
  */
 export interface SerializableTrackerOptions {
-  interpolation?: 'linear' | 'cubic' | 'geodesic' | 'none' | 'adaptive';
+  interpolation?: 'linear' | 'cubic' | 'geodesic' | 'none' | 'smooth' | 'adaptive';
   adaptive?: {
     minPeriodMs?: number;
     maxPeriodMs?: number;

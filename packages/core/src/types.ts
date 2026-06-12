@@ -56,6 +56,12 @@ export interface SweepResult {
  * Fixed-size per-vehicle slot (ring pattern).
  */
 export interface VehicleSlot {
+  /**
+   * Position before {@link previous}. Needed by `interpolation: 'smooth'`
+   * (3-point Catmull-Rom) for tangent shaping at `previous`. Null until
+   * the third ingest lands; smooth mode falls back to linear while it is.
+   */
+  previous2: TrailPoint | null;
   previous: TrailPoint | null;
   current: TrailPoint | null;
   lastIngestAt: number;
@@ -72,8 +78,17 @@ export type InitialPositionBehavior = 'show-immediately' | 'wait-for-second' | '
 
 /**
  * Built-in interpolation modes (excluding custom interpolators and 'adaptive').
+ *
+ * - `linear`   : Straight-line lerp between the two latest points.
+ * - `cubic`    : Smoothstep easing on the same two points.
+ * - `geodesic` : Great-circle arc (ships, aircraft).
+ * - `none`     : Snap to the latest point with no in-between motion.
+ * - `smooth`   : 3-point centripetal Catmull-Rom over `previous2 → previous
+ *               → current`, so direction changes at `previous` round off
+ *               instead of kinking. Until the third ingest lands, falls
+ *               back to `linear` (no extra history yet to shape with).
  */
-export type InterpolationMode = 'linear' | 'cubic' | 'geodesic' | 'none';
+export type InterpolationMode = 'linear' | 'cubic' | 'geodesic' | 'none' | 'smooth';
 
 export interface InterpolationOptions {
   shortestArcHeading?: boolean;

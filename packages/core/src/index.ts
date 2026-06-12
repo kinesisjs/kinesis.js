@@ -8,7 +8,7 @@ export { EventBus } from './event-bus';
 export { Sweeper } from './sweeper';
 
 // Utilities — public for authors of route-aware, predict, and custom interpolators.
-export { haversineDistance, shortestArcDiff, linearLerp } from './math-utils';
+export { catmullRomLerp, haversineDistance, linearLerp, shortestArcDiff } from './math-utils';
 
 // Types
 export type {

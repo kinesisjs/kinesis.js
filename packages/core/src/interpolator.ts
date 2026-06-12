@@ -33,6 +33,15 @@ export class Interpolator {
         return this.geodesic(from, to, ratio, shortestArcHeading);
       case 'none':
         return to;
+      case 'smooth':
+        // 'smooth' is 3-point Catmull-Rom and needs the slot's
+        // `previous2` field; the Tracker invokes catmullRomLerp directly
+        // when that history exists. This branch is the documented
+        // fallback for the first two ingests of a vehicle (or any case
+        // where the caller routes a 2-point query through here): degrade
+        // to linear so motion stays smooth even before the spline can
+        // engage.
+        return linearLerp(from, to, ratio, shortestArcHeading);
     }
   }
 
