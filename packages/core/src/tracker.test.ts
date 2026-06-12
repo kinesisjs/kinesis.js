@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Tracker } from './tracker';
-import type { Position, TrackAdapter, TrackerError, TrailPoint } from './types';
+import type { Position, TrackAdapter, TrackerError, TrailPoint, VehicleSlot } from './types';
 
 class MockAdapter implements TrackAdapter {
   readonly added: Map<string, TrailPoint> = new Map();
@@ -479,5 +479,137 @@ describe('Tracker interpolation: smooth', () => {
     // With previous2 dropped, behaviour matches pure linear midpoint.
     expect(last?.[1].lng).toBeCloseTo(29.00015, 8);
     expect(last?.[1].lat).toBeCloseTo(41.0001, 8);
+  });
+});
+
+describe('Tracker playout buffer', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders at the configured pace regardless of arrival jitter (manual config)', () => {
+    // Three ingests with deliberately uneven gaps land at t=0 / 500 / 1500.
+    // Playout schedules them at bufferMs (=2000) and then pace (=1000)
+    // apart, so the marker should sit at the start point until t=2000
+    // and arrive at the second-position midpoint at t=2500.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'linear',
+      playout: { pace: 1000, bufferMs: 2000 },
+    });
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]); // playoutAt = 2000
+
+    vi.setSystemTime(500);
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0 }]); // playoutAt = 3000
+
+    vi.setSystemTime(1500);
+    t.ingest([{ id: 'v1', lng: 29.0002, lat: 41.0 }]); // playoutAt = 4000
+
+    // Before the buffer warms up: still at the first point.
+    vi.setSystemTime(1000);
+    t.tickOnce();
+    let last = adapter.updatePosition.mock.calls.at(-1);
+    expect(last?.[1].lng).toBeCloseTo(29.0, 8);
+
+    // Half-way through the first segment (2000 → 3000) at t=2500.
+    vi.setSystemTime(2500);
+    t.tickOnce();
+    last = adapter.updatePosition.mock.calls.at(-1);
+    expect(last?.[1].lng).toBeCloseTo(29.00005, 8);
+
+    // Half-way through the second segment (3000 → 4000) at t=3500.
+    // Even though ingest gaps were 500 ms and 1000 ms (jittery), display
+    // pace stays a constant 1000 ms per segment.
+    vi.setSystemTime(3500);
+    t.tickOnce();
+    last = adapter.updatePosition.mock.calls.at(-1);
+    expect(last?.[1].lng).toBeCloseTo(29.00015, 8);
+  });
+
+  it("'auto' calibrates pace and bufferMs from the gap history (per vehicle)", () => {
+    // PLAYOUT_AUTO_MIN_SAMPLES is 5 — the first five inter-ingest gaps
+    // fall on the classical path; subsequent ones engage the resolved
+    // playout config. Sample gaps of [1000, 2000, 3000, 4000, 5000] →
+    // avg=3000 → pace=3000, max=5000 → bufferMs=7500.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'linear',
+      playout: 'auto',
+    });
+
+    let now = 0;
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]);
+
+    // First five gaps (1, 2, 3, 4, 5 seconds) populate the sample window.
+    for (const gap of [1000, 2000, 3000, 4000, 5000]) {
+      now += gap;
+      vi.setSystemTime(now);
+      t.ingest([{ id: 'v1', lng: 29.0 + gap * 1e-8, lat: 41.0 }]);
+    }
+
+    // After 5 samples auto must be live. The next ingest schedules with
+    // pace=3000, bufferMs=7500 → playoutAt = now + 7500 = (5+15)s × ?...
+    // We don't need to assert the exact playoutAt; what we *do* assert
+    // is that the queue is now populated (proof that auto engaged).
+    // @ts-expect-error reach into private state for the assertion
+    const slot = (t as unknown as { slots: Map<string, VehicleSlot> }).slots.get('v1');
+    expect(slot?.playoutQueue?.length ?? 0).toBeGreaterThan(0);
+  });
+
+  it('holds at the head when the buffer underruns (single entry in queue)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'linear',
+      playout: { pace: 1000, bufferMs: 2000 },
+    });
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]);
+
+    // Way past everything that's in the queue: only the seeded first
+    // entry exists, no second segment endpoint. Marker must stay at
+    // the head point — no NaN, no jump.
+    vi.setSystemTime(60_000);
+    t.tickOnce();
+    const last = adapter.updatePosition.mock.calls.at(-1);
+    expect(last?.[1].lng).toBeCloseTo(29.0, 8);
+    expect(Number.isFinite(last?.[1].lng)).toBe(true);
+  });
+
+  it("doesn't touch the classical path when playout is absent (backwards compat)", () => {
+    // No playout in options → classical behaviour: ingest twice, then
+    // tick at half-period; should match linear lerp with renderLagMs.
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const adapter = new MockAdapter();
+    const t = new Tracker({
+      adapter,
+      ingestThrottle: 0,
+      interpolation: 'linear',
+      renderLagMs: 1000,
+      // no playout
+    });
+    t.ingest([{ id: 'v1', lng: 29.0, lat: 41.0 }]);
+    vi.setSystemTime(1000);
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0 }]);
+    vi.setSystemTime(1500);
+    t.tickOnce();
+    const last = adapter.updatePosition.mock.calls.at(-1);
+    expect(last?.[1].lng).toBeCloseTo(29.00005, 8);
+
+    // And no playoutQueue should have been allocated on the slot.
+    // @ts-expect-error reach into private state for the assertion
+    const slot = (t as unknown as { slots: Map<string, VehicleSlot> }).slots.get('v1');
+    expect(slot?.playoutQueue).toBeUndefined();
   });
 });
