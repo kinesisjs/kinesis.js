@@ -1,5 +1,21 @@
 # @kinesisjs/angular
 
+## 0.5.0
+
+### Minor Changes
+
+- [#22](https://github.com/kinesisjs/kinesis.js/pull/22) [`baea34e`](https://github.com/kinesisjs/kinesis.js/commit/baea34e321fc74f3d3d3c91542eb567443f88b13) Thanks [@Mu-As](https://github.com/Mu-As)! - Expose `[playout]` `@Input` on `KinesisMapDirective`, mirroring the
+  `TrackerOptions.playout` field that landed in `@kinesisjs/core@0.5.0`.
+
+  ```html
+  <div kinesisMap [positions]="positions" [interpolation]="'smooth'" [playout]="'auto'"></div>
+  ```
+
+  Forwarded to the underlying `Tracker` only when set, so omitting the
+  input keeps the classical real-time path. Use `'auto'` for unknown
+  feeds (Tracker self-calibrates from the gap history) or
+  `{ pace, bufferMs, maxQueue }` when you know your worst-case gap.
+
 ## 0.4.0
 
 ### Minor Changes
