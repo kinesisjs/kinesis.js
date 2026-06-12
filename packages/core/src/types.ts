@@ -53,6 +53,16 @@ export interface SweepResult {
 }
 
 /**
+ * Position + the scheduled time it should be reached, used by the playout
+ * buffer to convert variable ingest spacing into a constant render rate.
+ */
+export interface PlayoutQueueEntry {
+  point: TrailPoint;
+  /** Wall-clock ms (Date.now domain) when this point becomes the segment endpoint. */
+  playoutAt: number;
+}
+
+/**
  * Fixed-size per-vehicle slot (ring pattern).
  */
 export interface VehicleSlot {
@@ -69,6 +79,22 @@ export interface VehicleSlot {
   /** Whether `Adapter.addVehicle` has been called yet — critical for the
    *  `wait-for-second` initial-position behavior. */
   isAttached: boolean;
+  /**
+   * Playout buffer (FIFO of scheduled positions). Populated only when
+   * `TrackerOptions.playout` is set; absent for the classical real-time
+   * path. Adjacent entries are spaced exactly `pace` ms apart, so tick()
+   * renders at a constant rate regardless of how irregular ingest arrival
+   * is.
+   */
+  playoutQueue?: PlayoutQueueEntry[];
+  /** `playoutAt` to assign to the next incoming ingest for this vehicle. */
+  nextPlayoutAt?: number;
+  /**
+   * Sliding window of the last few ingest gap measurements (ms), used by
+   * `playout: 'auto'` to converge on a `pace` / `bufferMs` per vehicle.
+   * Absent when playout is off or manual.
+   */
+  playoutSamples?: number[];
 }
 
 /**
@@ -140,6 +166,36 @@ export interface FadeAnimationOptions {
   duration?: number;
   /** Easing function. Default: 'ease-in-out'. */
   easing?: 'linear' | 'ease-in-out';
+}
+
+/**
+ * Configuration for the playout buffer — turns a variable-period (jittery)
+ * ingest stream into a constant-rate render so the marker no longer speeds
+ * up and slows down with each segment.
+ *
+ * Trade-off: `bufferMs` of additional perceived latency in exchange for
+ * smooth motion. Pick `bufferMs >= worstCaseGap` to avoid buffer underrun
+ * (which would freeze the marker until the next ingest arrives).
+ */
+export interface PlayoutOptions {
+  /**
+   * Wall-clock ms each segment should occupy. Constant across segments
+   * regardless of input timing. Typical: the expected average ingest
+   * period (e.g. 1000 for a nominally 1 Hz feed).
+   */
+  pace: number;
+  /**
+   * How far behind real time the first ingest is scheduled. Acts as
+   * jitter absorption — a 10 s gap won't underrun a 12 s buffer.
+   * Rule of thumb: pick `worstCaseGap × 1.5`.
+   */
+  bufferMs: number;
+  /**
+   * Maximum queue length per vehicle. Caps memory under bursty inputs.
+   * When the queue is full, the oldest already-played entry is dropped.
+   * Default: 20.
+   */
+  maxQueue?: number;
 }
 
 /**
@@ -218,6 +274,26 @@ export interface TrackerOptions {
    * Default: 1000.
    */
   renderLagMs?: number;
+
+  /**
+   * Playout buffer: decouple display rate from arrival rate so a jittery
+   * feed (1–10 s gaps, replay scrubbing, retry storms) renders at a
+   * steady pace instead of speeding up and slowing down with each
+   * segment. Opt-in; absent → classical real-time path (no behaviour
+   * change).
+   *
+   * - Object form: pick `pace` (display interval per segment) and
+   *   `bufferMs` (latency floor) yourself. Best when you know your
+   *   feed's worst-case gap.
+   * - `'auto'`: Tracker measures the last ~10 ingest periods per
+   *   vehicle and sets `pace = avg`, `bufferMs = max × 1.5`. Until it
+   *   has at least ~5 samples it falls back to the classical path,
+   *   then engages playout.
+   *
+   * Render-lag (`renderLagMs`) is ignored while playout is active —
+   * `bufferMs` plays the same role and would otherwise double up.
+   */
+  playout?: PlayoutOptions | 'auto';
 
   /**
    * Run the tick loop (interpolation, sanity checks, sweeper) inside a Web

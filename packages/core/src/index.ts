@@ -25,6 +25,8 @@ export type {
   TrackerStats,
   TrackerEventMap,
   FadeAnimationOptions,
+  PlayoutOptions,
+  PlayoutQueueEntry,
 
   // Adapter contract
   TrackAdapter,

@@ -34,6 +34,7 @@ export interface SerializableTrackerOptions {
   initialPositionBehavior?: 'show-immediately' | 'wait-for-second' | 'fade-in';
   shortestArcHeading?: boolean;
   renderLagMs?: number;
+  playout?: { pace: number; bufferMs: number; maxQueue?: number } | 'auto';
 }
 
 // ─── Main → Worker ──────────────────────────────────────────────────────

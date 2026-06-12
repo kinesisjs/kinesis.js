@@ -221,6 +221,7 @@ function toSerializable(options: TrackerOptions): SerializableTrackerOptions {
     out.initialPositionBehavior = options.initialPositionBehavior;
   if (options.shortestArcHeading !== undefined) out.shortestArcHeading = options.shortestArcHeading;
   if (options.renderLagMs !== undefined) out.renderLagMs = options.renderLagMs;
+  if (options.playout !== undefined) out.playout = options.playout;
   return out;
 }
 

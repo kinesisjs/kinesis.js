@@ -35,6 +35,13 @@ export class Tracker {
   private static readonly TICK_HISTORY_SIZE = 100;
   private static readonly DROPPED_TICK_BUDGET_MS = 16;
 
+  // Auto-playout calibration: a sliding window of this many recent ingest
+  // gaps (per vehicle) is enough to converge on a stable pace/bufferMs.
+  private static readonly PLAYOUT_AUTO_WINDOW = 10;
+  private static readonly PLAYOUT_AUTO_MIN_SAMPLES = 5;
+  private static readonly PLAYOUT_AUTO_BUFFER_FACTOR = 1.5;
+  private static readonly PLAYOUT_DEFAULT_MAX_QUEUE = 20;
+
   private readonly slots = new Map<string, VehicleSlot>();
   private readonly events = new EventBus<TrackerEventMap>();
   // Definite-assignment (`!`): these are assigned in the constructor's normal
@@ -119,6 +126,13 @@ export class Tracker {
         continue;
       }
 
+      // Per-vehicle gap sample for `playout: 'auto'` calibration. Recorded
+      // before the slot is mutated so the delta reflects this ingest's
+      // gap from the previous one.
+      if (this.options.playout === 'auto') {
+        this.recordPlayoutSample(existing, now);
+      }
+
       // 3-point sliding window: previous2 keeps the position before
       // `previous` so 'smooth' interpolation has the tangent it needs at
       // each waypoint. For modes that ignore it (linear/cubic/etc.) the
@@ -127,6 +141,16 @@ export class Tracker {
       existing.previous = existing.current;
       existing.current = this.toTrailPoint(pos, now);
       existing.lastIngestAt = now;
+
+      // Playout buffer: append to the queue with a scheduled `playoutAt`
+      // so tick() can render at a constant rate independent of arrival
+      // spacing. resolvePlayout() returns null while 'auto' is still
+      // warming up — the slot then behaves classically until enough
+      // samples are in.
+      const playoutCfg = this.resolvePlayout(existing);
+      if (playoutCfg && existing.current) {
+        this.appendPlayoutEntry(existing, existing.current, now, playoutCfg);
+      }
       if (existing.state !== 'active') {
         existing.state = 'active';
         // Recovery from warning via fresh ingest; notify adapter immediately
@@ -277,6 +301,19 @@ export class Tracker {
     for (const [vehicleId, slot] of this.slots) {
       if (!slot.current || !slot.isAttached) continue;
 
+      // Playout buffer: when active, render from the queue at a constant
+      // rate instead of the classical receivedAt-driven path. The
+      // resolvePlayout() guard keeps 'auto' on the classical path while
+      // it warms up.
+      if (slot.playoutQueue) {
+        const cfg = this.resolvePlayout(slot);
+        if (cfg) {
+          this.tickPlayoutSlot(vehicleId, slot, now, cfg);
+          activeCount++;
+          continue;
+        }
+      }
+
       if (!slot.previous) {
         this.safeUpdate(vehicleId, slot.current);
         activeCount++;
@@ -375,6 +412,150 @@ export class Tracker {
     return new Interpolator(mode);
   }
 
+  // ─── Playout helpers ────────────────────────────────────────────────────
+
+  /**
+   * Resolve the effective playout config for a slot. Returns null when
+   * playout is off, or when 'auto' is still gathering enough samples to
+   * calibrate. Callers use null to mean "fall back to the classical
+   * real-time path".
+   */
+  private resolvePlayout(slot: VehicleSlot): {
+    pace: number;
+    bufferMs: number;
+    maxQueue: number;
+  } | null {
+    const opt = this.options.playout;
+    if (!opt) return null;
+    if (opt === 'auto') {
+      const samples = slot.playoutSamples;
+      if (!samples || samples.length < Tracker.PLAYOUT_AUTO_MIN_SAMPLES) return null;
+      let sum = 0;
+      let max = 0;
+      for (const s of samples) {
+        sum += s;
+        if (s > max) max = s;
+      }
+      const pace = sum / samples.length;
+      const bufferMs = max * Tracker.PLAYOUT_AUTO_BUFFER_FACTOR;
+      return { pace, bufferMs, maxQueue: Tracker.PLAYOUT_DEFAULT_MAX_QUEUE };
+    }
+    return {
+      pace: opt.pace,
+      bufferMs: opt.bufferMs,
+      maxQueue: opt.maxQueue ?? Tracker.PLAYOUT_DEFAULT_MAX_QUEUE,
+    };
+  }
+
+  /**
+   * Record the gap since the previous ingest for this vehicle so
+   * `playout: 'auto'` can calibrate. Only called from the existing-slot
+   * branch of ingest(), so `lastIngestAt` is always the previous
+   * ingest's timestamp; no need to guard against the first one.
+   */
+  private recordPlayoutSample(slot: VehicleSlot, now: number): void {
+    if (!slot.playoutSamples) slot.playoutSamples = [];
+    slot.playoutSamples.push(now - slot.lastIngestAt);
+    while (slot.playoutSamples.length > Tracker.PLAYOUT_AUTO_WINDOW) {
+      slot.playoutSamples.shift();
+    }
+  }
+
+  /**
+   * Push a new point onto the slot's playout queue with a `playoutAt`
+   * that maintains constant `pace` spacing from the previous entry.
+   * The first entry sits `bufferMs` from `now` so jitter has room to
+   * absorb before any segment plays back. Caps the queue at
+   * `maxQueue`, dropping already-played heads as needed.
+   */
+  private appendPlayoutEntry(
+    slot: VehicleSlot,
+    point: TrailPoint,
+    now: number,
+    cfg: { pace: number; bufferMs: number; maxQueue: number },
+  ): void {
+    if (!slot.playoutQueue) slot.playoutQueue = [];
+    const playoutAt =
+      slot.nextPlayoutAt !== undefined && slot.nextPlayoutAt >= now
+        ? slot.nextPlayoutAt
+        : now + cfg.bufferMs;
+    slot.playoutQueue.push({ point, playoutAt });
+    slot.nextPlayoutAt = playoutAt + cfg.pace;
+    while (slot.playoutQueue.length > cfg.maxQueue) slot.playoutQueue.shift();
+  }
+
+  /**
+   * Tick path used while a slot's playout queue is active. Advances the
+   * queue head past any segments that have already played out (keeping
+   * slot.previous2/previous in sync so smooth-mode interpolation still
+   * has its three-point window), then either holds at the head during
+   * buffer warm-up / underrun, or computes the interpolated point for
+   * the active queue[0]→queue[1] segment using the configured pace as
+   * the segment duration (constant for every segment, by design).
+   */
+  private tickPlayoutSlot(
+    vehicleId: string,
+    slot: VehicleSlot,
+    now: number,
+    cfg: { pace: number; bufferMs: number; maxQueue: number },
+  ): void {
+    const queue = slot.playoutQueue;
+    if (!queue || queue.length === 0) return;
+
+    // Advance the head until queue[0]→queue[1] is the segment that
+    // covers `now`. Each shift moves a played-out point into the
+    // sliding window so smooth mode still has previous2 to work with.
+    while (queue.length >= 2) {
+      const next = queue[1];
+      if (!next || now < next.playoutAt) break;
+      const shifted = queue.shift();
+      if (shifted) {
+        slot.previous2 = slot.previous;
+        slot.previous = shifted.point;
+      }
+    }
+
+    const head = queue[0];
+    if (!head) return;
+    const next = queue[1];
+
+    if (!next) {
+      // Buffer underrun (no segment endpoint yet) or warm-up (this
+      // single entry hasn't played out yet). Hold at the head point so
+      // the marker stays visible — better than vanishing or jumping.
+      this.safeUpdate(vehicleId, head.point);
+      return;
+    }
+
+    const elapsed = now - head.playoutAt;
+    if (elapsed <= 0) {
+      // Still within the buffer warm-up: head.playoutAt is in the
+      // future. Hold at `head.point`.
+      this.safeUpdate(vehicleId, head.point);
+      return;
+    }
+
+    const ratio = Math.min(1, elapsed / cfg.pace);
+    const opts: InterpolationOptions = {
+      shortestArcHeading: this.options.shortestArcHeading ?? true,
+      vehicleId,
+    };
+    // forceCubic only matters for the classical sharp-turn fallback;
+    // smooth handles direction changes natively, and the playout path
+    // is meant to compose with smooth for max smoothness, so we leave
+    // forceCubic off here.
+    const point = this.computeInterpolated(
+      vehicleId,
+      slot.previous2,
+      head.point,
+      next.point,
+      ratio,
+      opts,
+      false,
+    );
+    if (point) this.safeUpdate(vehicleId, point);
+  }
+
   private createSlot(pos: Position, now: number): void {
     const initial = this.toTrailPoint(pos, now);
     const slot: VehicleSlot = {
@@ -385,6 +566,14 @@ export class Tracker {
       state: 'active',
       isAttached: false,
     };
+    if (this.options.playout !== undefined) {
+      slot.playoutQueue = [];
+      if (this.options.playout === 'auto') slot.playoutSamples = [];
+      // Seed the first queue entry so tick() has somewhere to start. The
+      // entry plays out `bufferMs` from now (or `nextPlayoutAt`).
+      const cfg = this.resolvePlayout(slot);
+      if (cfg) this.appendPlayoutEntry(slot, initial, now, cfg);
+    }
     this.slots.set(pos.id, slot);
 
     const behavior = this.options.initialPositionBehavior ?? 'show-immediately';
