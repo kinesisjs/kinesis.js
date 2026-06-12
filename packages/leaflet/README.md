@@ -5,6 +5,8 @@
 [![npm](https://img.shields.io/npm/v/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)
 [![Downloads](https://img.shields.io/npm/dm/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)
 [![Bundle size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/leaflet?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/leaflet)
+[![Provenance](https://img.shields.io/badge/npm%20provenance-signed-brightgreen.svg?logo=sigstore&logoColor=white)](https://www.npmjs.com/package/@kinesisjs/leaflet)
+[![Changelog](https://img.shields.io/badge/changelog-keep%20a%20changelog-blue)](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Leaflet](https://img.shields.io/badge/peer-leaflet%20%E2%89%A51.7-199900.svg)](https://leafletjs.com/)
 
