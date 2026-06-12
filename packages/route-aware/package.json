@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/route-aware",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Road-snapping interpolation for Kinesis.js — OSRM-backed CustomInterpolator with LRU cache",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
