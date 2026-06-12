@@ -1,6 +1,6 @@
 {
   "name": "@kinesisjs/leaflet",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Leaflet map adapter for Kinesis.js — feature lifecycle and styling",
   "license": "MIT",
   "author": "Muzaffer Aşkar",
