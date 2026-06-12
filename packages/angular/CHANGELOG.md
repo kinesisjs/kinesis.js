@@ -1,5 +1,13 @@
 # @kinesisjs/angular
 
+## 0.3.1
+
+### Patch Changes
+
+- Updated dependencies [[`95099fe`](https://github.com/kinesisjs/kinesis.js/commit/95099fe082d5a1bf715a4ad3bc88a76f98f7951a)]:
+  - @kinesisjs/core@0.4.0
+  - @kinesisjs/openlayers@0.2.4
+
 ## 0.3.0
 
 ### Minor Changes
