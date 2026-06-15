@@ -613,3 +613,41 @@ describe('Tracker playout buffer', () => {
     expect(slot?.playoutQueue).toBeUndefined();
   });
 });
+
+describe('Tracker.ingest — non-finite heading/speed are dropped', () => {
+  it('drops a non-numeric (string) heading/speed from the trail point', () => {
+    const adapter = new MockAdapter();
+    const t = new Tracker({ adapter });
+    t.ingest([
+      {
+        id: 'v1',
+        lng: 29,
+        lat: 41,
+        heading: '0" onload=alert(1)' as unknown as number,
+        speed: 'fast' as unknown as number,
+      },
+    ]);
+    const pt = adapter.added.get('v1');
+    expect(pt).toBeDefined();
+    expect(pt?.heading).toBeUndefined();
+    expect(pt?.speed).toBeUndefined();
+  });
+
+  it('drops NaN / Infinity heading/speed', () => {
+    const adapter = new MockAdapter();
+    const t = new Tracker({ adapter });
+    t.ingest([{ id: 'v1', lng: 29, lat: 41, heading: NaN, speed: Infinity }]);
+    const pt = adapter.added.get('v1');
+    expect(pt?.heading).toBeUndefined();
+    expect(pt?.speed).toBeUndefined();
+  });
+
+  it('keeps finite heading/speed', () => {
+    const adapter = new MockAdapter();
+    const t = new Tracker({ adapter });
+    t.ingest([{ id: 'v1', lng: 29, lat: 41, heading: 90, speed: 50 }]);
+    const pt = adapter.added.get('v1');
+    expect(pt?.heading).toBe(90);
+    expect(pt?.speed).toBe(50);
+  });
+});

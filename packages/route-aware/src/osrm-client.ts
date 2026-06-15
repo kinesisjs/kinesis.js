@@ -24,8 +24,14 @@ export async function fetchRoute({
   timeoutMs,
   fetchImpl,
 }: FetchRouteArgs): Promise<Polyline> {
+  // `baseUrl`/`profile` are trusted config, but validate defensively so a
+  // misconfigured (or attacker-influenced) value can't redirect the request
+  // to an arbitrary scheme or inject extra path/query segments.
+  if (!/^https?:\/\//i.test(baseUrl)) {
+    throw new Error(`OSRM baseUrl must be an http(s) URL, got: ${baseUrl}`);
+  }
   const url =
-    `${baseUrl.replace(/\/$/, '')}/route/v1/${profile}/` +
+    `${baseUrl.replace(/\/$/, '')}/route/v1/${encodeURIComponent(profile)}/` +
     `${from.lng},${from.lat};${to.lng},${to.lat}` +
     `?overview=full&geometries=geojson`;
 
