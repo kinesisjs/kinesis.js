@@ -809,8 +809,13 @@ export class Tracker {
       ts: pos.timestamp ?? now,
       receivedAt: now,
     };
-    if (pos.speed !== undefined) result.speed = pos.speed;
-    if (pos.heading !== undefined) result.heading = pos.heading;
+    // Only carry through finite numbers. `speed`/`heading` are typed as
+    // numbers but arrive from untrusted feeds at runtime; a non-numeric value
+    // must not reach adapters (e.g. a string heading interpolated into marker
+    // HTML would be an injection vector). Drop anything non-finite.
+    if (typeof pos.speed === 'number' && Number.isFinite(pos.speed)) result.speed = pos.speed;
+    if (typeof pos.heading === 'number' && Number.isFinite(pos.heading))
+      result.heading = pos.heading;
     if (pos.meta !== undefined) result.meta = pos.meta;
     return result;
   }

@@ -71,3 +71,37 @@ describe('createVehicleStyle', () => {
     expect(html(factory(pt({ speed: 99 })))).toContain('#123456');
   });
 });
+
+describe('createVehicleStyle — untrusted input stays inert', () => {
+  it('coerces a non-numeric heading so it cannot break out of the style attribute', () => {
+    const factory = createVehicleStyle();
+    // A malformed/malicious feed: heading is typed `number` but is a string
+    // at runtime. It must never reach the markup verbatim.
+    const out = html(factory(pt({ heading: '0deg" onload="alert(1)' as unknown as number })));
+    expect(out).not.toContain('onload');
+    expect(out).not.toContain('alert(1)');
+    expect(out).toContain('rotate(0deg)'); // falls back to 0
+  });
+
+  it('escapes a malicious icon URL so it cannot break out of the src attribute', () => {
+    const factory = createVehicleStyle({ icon: '"><img src=x onerror=alert(1)>' });
+    const out = html(factory(pt({ heading: 0 })));
+    expect(out).not.toContain('"><img'); // breakout sequence is escaped
+    expect(out).not.toContain('<img src=x'); // no injected raw <img> tag
+    expect(out).toContain('&quot;'); // the quote was escaped
+  });
+
+  it('escapes a malicious colour in the SVG fill', () => {
+    const factory = createVehicleStyle({ defaultColor: '"><script>alert(1)</script>' });
+    const out = html(factory(pt({})));
+    expect(out).not.toContain('<script>');
+    expect(out).toContain('&lt;script&gt;');
+  });
+
+  it('coerces a non-numeric icon size to the default', () => {
+    const factory = createVehicleStyle({ iconSize: 'NaN' as unknown as number });
+    const out = html(factory(pt({})));
+    expect(out).not.toContain('NaN');
+    expect(out).toContain('width="24"');
+  });
+});

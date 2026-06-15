@@ -38,16 +38,22 @@ export function colorForSpeed(speed: number, bands: SpeedColorBand[], fallback: 
 export function createVehicleStyle(
   options: VehicleStyleOptions = {},
 ): (vehicle: TrailPoint) => DivIcon {
-  const size = options.iconSize ?? 24;
-  const radius = options.circleRadius ?? 6;
-  const rotationOffset = options.rotationOffset ?? 0;
+  // Numeric options are coerced to finite numbers: the result is interpolated
+  // into HTML attributes, so a non-numeric value (e.g. from an untyped JS
+  // caller) must never reach the markup.
+  const size = toFinite(options.iconSize, 24);
+  const radius = toFinite(options.circleRadius, 6);
+  const rotationOffset = toFinite(options.rotationOffset, 0);
   const defaultColor = options.defaultColor ?? '#3b82f6';
   const bands = options.speedColorBands ?? [];
 
   return (vehicle: TrailPoint): DivIcon => {
-    const color =
-      bands.length > 0 ? colorForSpeed(vehicle.speed ?? 0, bands, defaultColor) : defaultColor;
-    const rotation = (vehicle.heading ?? 0) + rotationOffset;
+    const speed = toFinite(vehicle.speed, 0);
+    const color = bands.length > 0 ? colorForSpeed(speed, bands, defaultColor) : defaultColor;
+    // `heading` arrives from the (untrusted) position feed and is NOT
+    // number-validated by core — coerce it so a string payload can't break
+    // out of the `style="transform:rotate(…)"` attribute.
+    const rotation = toFinite(vehicle.heading, 0) + rotationOffset;
     const html = options.icon
       ? imageHtml(options.icon, size, rotation)
       : dotHtml(color, size, radius, rotation, vehicle.heading !== undefined);
@@ -61,8 +67,24 @@ export function createVehicleStyle(
   };
 }
 
+/** Coerce an unknown value to a finite number, or `fallback` if it isn't one. */
+function toFinite(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Escape a string for safe interpolation into a double-quoted HTML attribute. */
+function escapeAttr(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function imageHtml(src: string, size: number, rotation: number): string {
-  return `<img src="${src}" width="${size}" height="${size}" style="display:block;transform:rotate(${rotation}deg);transform-origin:center;" />`;
+  return `<img src="${escapeAttr(src)}" width="${size}" height="${size}" style="display:block;transform:rotate(${rotation}deg);transform-origin:center;" />`;
 }
 
 function dotHtml(
@@ -74,13 +96,14 @@ function dotHtml(
 ): string {
   const c = size / 2;
   // Optional heading arrow above the dot — only drawn when a heading is known.
+  const fill = escapeAttr(color);
   const arrow = hasHeading
-    ? `<polygon points="${c},${c - radius - 4} ${c - 4},${c - radius + 2} ${c + 4},${c - radius + 2}" fill="${color}" />`
+    ? `<polygon points="${c},${c - radius - 4} ${c - 4},${c - radius + 2} ${c + 4},${c - radius + 2}" fill="${fill}" />`
     : '';
   return (
     `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" ` +
     `style="transform:rotate(${rotation}deg);transform-origin:center;display:block;">` +
-    `<circle cx="${c}" cy="${c}" r="${radius}" fill="${color}" stroke="#fff" stroke-width="2" />` +
+    `<circle cx="${c}" cy="${c}" r="${radius}" fill="${fill}" stroke="#fff" stroke-width="2" />` +
     arrow +
     `</svg>`
   );
