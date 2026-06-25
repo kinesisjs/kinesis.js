@@ -45,11 +45,12 @@ Desktop.ini
 # Changesets
 .changeset/.cache/
 
-# Internal markdown documents — only README.md and CHANGELOG.md may be committed
-# at the repository root. Per-package README/CHANGELOG and the public docs site
-# under documents/ remain tracked because npm tarballs and the docs site rely
+# Internal markdown documents — only README.md, CHANGELOG.md and CLAUDE.md may be
+# committed at the repository root. Per-package README/CHANGELOG and the public docs
+# site under documents/ remain tracked because npm tarballs and the docs site rely
 # on them. Internal design notes live under documents/design/ (gitignored).
 /*.md
 !/README.md
 !/CHANGELOG.md
+!/CLAUDE.md
 documents/design/
