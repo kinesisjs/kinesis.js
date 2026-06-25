@@ -60,6 +60,10 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Guides',
+          items: [{ text: 'Live data (WebSocket / HTTP)', link: '/guide/realtime-data' }],
+        },
+        {
           text: 'Reference',
           items: [{ text: 'Migration', link: '/guide/migration' }],
         },
