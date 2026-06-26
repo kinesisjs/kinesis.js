@@ -8,6 +8,9 @@ export default defineConfig({
   cleanUrls: true,
   lastUpdated: true,
 
+  // Internal per-version status logs — tracked in git but kept off the public site.
+  srcExclude: ['deploys/**'],
+
   head: [
     ['meta', { name: 'theme-color', content: '#3b82f6' }],
     ['meta', { property: 'og:title', content: 'Kinesis.js' }],
