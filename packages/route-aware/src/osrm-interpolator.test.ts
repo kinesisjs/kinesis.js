@@ -143,6 +143,33 @@ describe('OSRMInterpolator — guardrails', () => {
     expect(ri.cacheSize).toBe(0); // rejected
   });
 
+  it('rejects a malformed OSRM profile before hitting the network', async () => {
+    // A profile is interpolated into the request path. `encodeURIComponent`
+    // already neutralises injection, but a syntactic guard fails fast on an
+    // obviously-wrong value instead of firing a doomed request that 404s.
+    const { fetch, calls } = mockFetchOk([
+      [29, 41],
+      [30, 41],
+    ]);
+    const ri = new OSRMInterpolator({ profile: 'driving car', fetch });
+    await expect(ri.prepare(tp(29, 41), tp(30, 41))).rejects.toThrow(/profile/i);
+    expect(calls()).toBe(0); // never reached fetch
+    expect(ri.cacheSize).toBe(0);
+  });
+
+  it('accepts a custom self-host profile name', async () => {
+    // Self-hosted OSRM builds can define custom profiles (e.g. `truck_eu`);
+    // the guard is syntactic, not a fixed driving/walking/cycling whitelist.
+    const { fetch, calls } = mockFetchOk([
+      [29, 41],
+      [30, 41],
+    ]);
+    const ri = new OSRMInterpolator({ profile: 'truck_eu', fetch });
+    await ri.prepare(tp(29, 41), tp(30, 41));
+    expect(calls()).toBe(1);
+    expect(ri.cacheSize).toBe(1);
+  });
+
   it('does not cache when OSRM returns an HTTP error', async () => {
     const ri = new OSRMInterpolator({ fetch: mockFetchError(503) });
     await expect(ri.prepare(tp(29, 41), tp(30, 41))).rejects.toThrow(/HTTP 503/);

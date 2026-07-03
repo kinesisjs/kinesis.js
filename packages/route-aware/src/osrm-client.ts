@@ -30,6 +30,14 @@ export async function fetchRoute({
   if (!/^https?:\/\//i.test(baseUrl)) {
     throw new Error(`OSRM baseUrl must be an http(s) URL, got: ${baseUrl}`);
   }
+  // `profile` is `encodeURIComponent`-escaped below, so injection is already
+  // impossible; this syntactic guard is defense-in-depth that also fails fast
+  // on an obviously-malformed value instead of firing a request that 404s. It
+  // stays a charset check (not a driving/walking/cycling whitelist) so
+  // self-hosted OSRM builds can still use custom profile names.
+  if (!/^[a-z0-9_-]+$/i.test(profile)) {
+    throw new Error(`OSRM profile must contain only letters, digits, '-' or '_', got: ${profile}`);
+  }
   const url =
     `${baseUrl.replace(/\/$/, '')}/route/v1/${encodeURIComponent(profile)}/` +
     `${from.lng},${from.lat};${to.lng},${to.lat}` +
