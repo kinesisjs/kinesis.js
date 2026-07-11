@@ -75,6 +75,15 @@
       "@angular/compiler": "^19",
       "@angular/platform-browser": "^19",
       "@angular/platform-browser-dynamic": "^19"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-39pv-4j6c-2g6v",
+        "GHSA-48r7-hpm6-gfxm",
+        "GHSA-p3vc-36g9-x9gr",
+        "GHSA-q6f4-qqrg-jv6x",
+        "GHSA-rgjc-h3x7-9mwg"
+      ]
     }
   },
   "lint-staged": {

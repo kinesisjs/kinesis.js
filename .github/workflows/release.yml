@@ -43,13 +43,21 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      - name: Upgrade tool-cache npm to >=11.5 (required for Trusted Publishing)
+      - name: Pin tool-cache npm to 11.x (Trusted Publishing floor, pre-npm-12 ceiling)
         # Node 22.x ships with npm 10.x. npm's automatic OIDC Trusted
         # Publishing flow landed in npm 11.5 — older npm CLIs see the
         # ACTIONS_ID_TOKEN_REQUEST_* env vars and ignore them, and every
         # publish fails with ENEEDAUTH (or, when wrapped by changesets/action,
-        # surfaces as an opaque 404). Without this upgrade, no release in
-        # this repo could ever publish via TP.
+        # surfaces as an opaque 404). So we need npm >=11.5.
+        #
+        # But we must NOT use npm@latest: `changeset publish` runs
+        # `pnpm publish --no-git-checks`, and pnpm 9 delegates the actual
+        # publish to the npm CLI, forwarding `--git-checks`. npm 12 turned
+        # unknown CLI flags into a fatal EUNKNOWNCONFIG (was a warning through
+        # v11), so every package fails to publish under npm@latest (=12.x).
+        # See pnpm/pnpm#9646; the pnpm-side fix (#10077) isn't in our pinned
+        # pnpm 9.15.9 yet. `npm@11` gives us the TP floor without the v12
+        # ceiling. Revisit (back to @latest) once pnpm is upgraded past the fix.
         #
         # We deliberately avoid `sudo`: sudo strips PATH and the install
         # lands in /usr/local/lib/node_modules, leaving the tool-cache npm
@@ -57,7 +65,7 @@ jobs:
         # writes into setup-node's tool cache, which is owned by the runner
         # user and is what every downstream step actually invokes.
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11
           echo "npm: $(npm --version)"
 
       - name: Install dependencies
