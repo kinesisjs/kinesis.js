@@ -15,7 +15,13 @@ export interface OSRMInterpolatorOptions {
    */
   baseUrl?: string;
 
-  /** OSRM routing profile. Default: `'driving'`. */
+  /**
+   * OSRM routing profile. Default: `'driving'`.
+   *
+   * Custom self-host profiles are allowed, but the value must be a bare profile
+   * token (`[A-Za-z0-9_-]+`) — a malformed profile is rejected before the
+   * request is issued (surfaces as an `INTERPOLATION_ERROR` event).
+   */
   profile?: 'driving' | 'walking' | 'cycling' | (string & {});
 
   /**

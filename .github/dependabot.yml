@@ -1,0 +1,26 @@
+# Dependabot keeps dependencies and pinned GitHub Actions current.
+# Updates are grouped so an ecosystem bump arrives as one PR, not a flood.
+version: 2
+updates:
+  # pnpm workspace dependencies (reads pnpm-lock.yaml at the root).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      production-dependencies:
+        dependency-type: production
+      development-dependencies:
+        dependency-type: development
+
+  # The workflow actions are SHA-pinned; Dependabot bumps the pins (and their
+  # version comments) so the pins never silently rot.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns:
+          - '*'
