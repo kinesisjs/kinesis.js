@@ -1,5 +1,11 @@
 # @kinesisjs/route-aware
 
+## 0.1.4
+
+### Patch Changes
+
+- [#28](https://github.com/kinesisjs/kinesis.js/pull/28) [`ae520ba`](https://github.com/kinesisjs/kinesis.js/commit/ae520baf1d37fdd45a00f4387ef9d1daec9e9e82) Thanks [@Mu-As](https://github.com/Mu-As)! - Harden the OSRM client: a malformed routing `profile` is now rejected before the request is issued (defense-in-depth on top of the existing `encodeURIComponent` escaping). The guard is syntactic (`[A-Za-z0-9_-]+`), so custom self-host profile names still work — only obviously-invalid values are rejected, surfacing as an `INTERPOLATION_ERROR` event instead of a doomed network call.
+
 ## 0.1.3
 
 ### Patch Changes
