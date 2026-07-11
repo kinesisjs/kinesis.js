@@ -38,7 +38,7 @@ Her geliştirme/commit'te (ufak ya da büyük), o versiyonun durum dosyasını g
 
 1. Yeni iş → branch `v<core>` aç. `documents/deploys/_TEMPLATE.md`'yi kopyala →
    `documents/deploys/v<core>.md`. _Önceki yayın (baseline)_ alanına en son yayınlanan
-   versiyon dosyasını referans ver (şu an [v0.5.1](documents/deploys/v0.5.1.md)).
+   versiyon dosyasını referans ver (şu an [v0.5.2](documents/deploys/v0.5.2.md)).
 2. Kategorik bölümleri (Feature, **Güvenlik**, **Performans**, Test, Docs, Build/Release)
    **son publish'e göre DIFF** olarak yaz — değişmeyeni "— değişiklik yok" diye işaretle,
    her şeyi yeniden yazma.
