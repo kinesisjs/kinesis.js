@@ -18,8 +18,8 @@ features:
     title: Framework-agnostic core
     details: No dependency on any map library or UI framework. Plug in through the adapter pattern.
   - icon: ⚡
-    title: 1000 vehicles at 60fps
-    details: ≈0.15 ms per tick, roughly 1% of the 60fps frame budget. Bounded memory via a ring slot pattern.
+    title: 1000 vehicles within a frame
+    details: ≈0.15 ms per tick — well under one display frame at any refresh rate (≈1% at 60 Hz, ≈2% at 120 Hz). Bounded memory via a ring slot pattern.
   - icon: 🧭
     title: Adaptive interpolation
     details: Period-aware classifier picks between linear, fade, and snap behaviour per vehicle.

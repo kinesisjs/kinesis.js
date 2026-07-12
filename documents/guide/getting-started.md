@@ -1,11 +1,11 @@
 # Getting started
 
-Kinesis.js renders smooth, 60fps movement on the map between periodic position updates. This guide takes you from zero to a working setup in five minutes.
+Kinesis.js renders smooth movement on the map at the display's refresh rate, between periodic position updates. This guide takes you from zero to a working setup in five minutes.
 
 ## In 30 seconds
 
 - **The problem:** Between two WebSocket or HTTP polling updates, vehicles jump on the map.
-- **The solution:** Interpolate mathematically between the two points and stream the result at 60fps.
+- **The solution:** Interpolate mathematically between the two points and render the result at the display's refresh rate.
 - **What Kinesis.js adds on top:** period-aware adaptive interpolation, multi-state lifecycle, sanity checks, custom interpolator extensibility, and a framework-agnostic core.
 
 ## Three packages, three layers

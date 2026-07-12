@@ -14,7 +14,7 @@ Mathematical engine for smooth movement between periodic position updates. No de
 
 ## Scope
 
-- **rAF-based clock** — 60fps tick, no tab-background catch-up jumps
+- **rAF-based clock** — ticks at the display's refresh rate (60/120 Hz+), no tab-background catch-up jumps
 - **Interpolation modes** — linear, cubic, geodesic, smooth (3-point Catmull-Rom), none, adaptive
 - **Playout buffer** — `playout: { pace, bufferMs } | 'auto'` re-times jittery ingest into a constant per-segment render pace
 - **Web Worker mode** — `worker: true` runs the tick loop off the main thread (adapter stays on it)
@@ -122,7 +122,7 @@ export type {
 
 ## Performance
 
-`Interpolator.compute` linear: **~50 ns/call** (20M ops/sec). `Tracker.tick` with 1000 vehicles: **~0.15 ms** (about 1% of the 60fps tick budget).
+`Interpolator.compute` linear: **~50 ns/call** (20M ops/sec). `Tracker.tick` with 1000 vehicles: **~0.15 ms** (well under one display frame — ≈1% at 60 Hz, ≈2% at 120 Hz).
 
 ## License
 

@@ -1,6 +1,6 @@
 # Interpolation
 
-How Kinesis.js turns sparse position updates into smooth 60fps movement.
+How Kinesis.js turns sparse position updates into smooth movement at the display's refresh rate.
 
 ## The pipeline
 
@@ -8,7 +8,7 @@ How Kinesis.js turns sparse position updates into smooth 60fps movement.
 ingest()  ───►  per-vehicle slot: { previous, current }
                                        │
                                        ▼
-                       Clock (rAF, ~60fps) on every tick:
+                       Clock (rAF, display refresh rate) on every tick:
                        compute renderTime  =  now − renderLagMs
                        compute ratio       =  (renderTime − prev.receivedAt) / period
                        compute point       =  interpolate(prev, curr, ratio)

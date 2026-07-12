@@ -1,6 +1,6 @@
 # Kinesis.js
 
-> **Smooth, 60fps vehicle movement between periodic position updates.**
+> **Smooth vehicle movement between periodic position updates, rendered at the display's refresh rate.**
 
 [![CI](https://github.com/kinesisjs/kinesis.js/actions/workflows/ci.yml/badge.svg)](https://github.com/kinesisjs/kinesis.js/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
@@ -8,7 +8,7 @@
 [![pnpm](https://img.shields.io/badge/pnpm-9-f69220.svg?logo=pnpm&logoColor=white)](https://pnpm.io/)
 [![Provenance](https://img.shields.io/badge/npm%20provenance-signed-brightgreen.svg?logo=sigstore&logoColor=white)](https://docs.npmjs.com/generating-provenance-statements)
 
-A framework-agnostic interpolation engine for fleet tracking, telematics, ride-hailing, transit, and asset-tracking applications. Renders smooth 60fps movement between periodic WebSocket or HTTP position updates while keeping memory bounded across multi-hour sessions.
+A framework-agnostic interpolation engine for fleet tracking, telematics, ride-hailing, transit, and asset-tracking applications. Renders smooth movement at the display's refresh rate between periodic WebSocket or HTTP position updates while keeping memory bounded across multi-hour sessions.
 
 ## Packages
 
@@ -75,7 +75,7 @@ Prefer Leaflet? `LeafletAdapter` from [`@kinesisjs/leaflet`](./packages/leaflet)
 
 ## Performance
 
-1000 vehicles per tick: **~0.15 ms** — roughly 1% of the 60fps frame budget.
+1000 vehicles per tick: **~0.15 ms** — well under one display frame at any refresh rate (≈1% at 60 Hz, ≈2% at 120 Hz).
 
 Run `pnpm test:bench` to reproduce on your hardware.
 
@@ -96,7 +96,7 @@ Run `pnpm test:bench` to reproduce on your hardware.
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 1: Core engine                                    │
 │  (@kinesisjs/core)                                       │
-│  ─ Clock (rAF-based 60fps tick)                          │
+│  ─ Clock (rAF screen-rate tick)                          │
 │  ─ Interpolator (linear/cubic/geodesic/smooth/adaptive)  │
 │  ─ Sweeper (multi-state lifecycle)                       │
 │  ─ EventBus (typed)                                      │
