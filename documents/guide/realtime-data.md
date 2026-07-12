@@ -10,7 +10,7 @@ How to feed a live API or WebSocket stream into Kinesis.js and get the smoothest
 
 ### Zihinsel model — motor ne yapar, ne yapmaz {#tr-model}
 
-Kinesis.js bir **akış interpolasyon motorudur**. Sen periyodik ham pozisyonları `tracker.ingest()` ile sokarsın; motor 60fps'te aradaki kareleri üretip marker'ı akıcı şekilde kaydırır.
+Kinesis.js bir **akış interpolasyon motorudur**. Sen periyodik ham pozisyonları `tracker.ingest()` ile sokarsın; motor, ekranın tazeleme hızında (rAF) aradaki kareleri üretip marker'ı akıcı şekilde kaydırır.
 
 İki temel gerçeği baştan netleştirelim:
 
@@ -211,7 +211,7 @@ Uyarılar: `CustomInterpolator` worker sınırını geçemez (ikisi birden veril
 
 **✅ Beklenenler**
 
-- İki ham pozisyon arasında 60fps akıcı hareket (renderLagMs/playout doğru ayarlıysa).
+- İki ham pozisyon arasında ekranın tazeleme hızında akıcı hareket (renderLagMs/playout doğru ayarlıysa).
 - Çok saatlik oturumlarda sabit bellek (araç başına sabit slot; iz büyümez).
 - Veri kesildiğinde otomatik yaşam döngüsü (`warning` → `stale` → kaldırma).
 - Hatalı koordinatların sessizce reddi + `error` kanalı.
@@ -243,7 +243,7 @@ Daha fazlası: [Limitations](/concepts/limitations).
 
 ### Mental model — what the engine does and doesn't {#en-model}
 
-Kinesis.js is a **streaming interpolation engine**. You push periodic raw positions in with `tracker.ingest()`; the engine generates the in-between frames at 60fps and slides the marker smoothly.
+Kinesis.js is a **streaming interpolation engine**. You push periodic raw positions in with `tracker.ingest()`; the engine generates the in-between frames at the display's refresh rate and slides the marker smoothly.
 
 Two facts to internalize up front:
 
@@ -444,7 +444,7 @@ Caveats: a `CustomInterpolator` can't cross the worker boundary (setting both th
 
 **✅ Expect**
 
-- 60fps smooth motion between two raw positions (when renderLagMs/playout are set right).
+- Smooth motion at the display's refresh rate between two raw positions (when renderLagMs/playout are set right).
 - Bounded memory across multi-hour sessions (fixed per-vehicle slot; trails don't grow).
 - Automatic lifecycle when data stops (`warning` → `stale` → removal).
 - Silent rejection of bad coordinates + an `error` channel.

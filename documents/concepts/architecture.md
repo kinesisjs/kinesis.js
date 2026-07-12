@@ -25,7 +25,7 @@ Kinesis.js follows a three-layer responsibility model. Each layer consumes the l
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 1: Core engine                                    │
 │  (@kinesisjs/core)                                       │
-│  ─ Clock (rAF-based 60fps tick)                          │
+│  ─ Clock (rAF screen-rate tick)                          │
 │  ─ Interpolator (linear, cubic, geodesic, adaptive)      │
 │  ─ Sweeper (multi-state lifecycle)                       │
 │  ─ EventBus (typed)                                      │
@@ -53,7 +53,7 @@ WebSocket ────► Worker ────► RxJS / Signal    │
                           └────────────┬───────────────┘
                                        │
                           ┌────────────▼───────────────┐
-                          │   Clock (60fps tick)       │
+                          │   Clock (rAF-driven)       │
                           │   on every tick:           │
                           │     interpolate(prev,curr) │
                           └────────────┬───────────────┘

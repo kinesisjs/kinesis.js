@@ -1,6 +1,6 @@
 # Performance
 
-> **TL;DR:** 1000 vehicles per tick is ≈0.15 ms — about 1% of the 60fps frame budget.
+> **TL;DR:** 1000 vehicles per tick is ≈0.15 ms — well under one display frame at any refresh rate (≈1% at 60 Hz, ≈2% at 120 Hz).
 
 Numbers below were collected on **Node 22, Windows 11, Intel**. Absolute values vary with hardware; the **ratios** are portable.
 
@@ -15,15 +15,15 @@ The first run takes 30–40 seconds.
 
 ## Headline numbers
 
-| Metric                                                         | 1000 vehicles |
-| -------------------------------------------------------------- | ------------- |
-| `Tracker.tick` linear, with sanity checks and adapter dispatch | ~0.15 ms      |
-| `Tracker.tick` share of the 60fps frame budget                 | **~1%**       |
-| `Tracker.ingest` first append                                  | ~0.08 ms      |
-| `Tracker.ingest` slot shift (allocation-free)                  | ~0.15 ms      |
-| `Interpolator.compute` linear (single point)                   | ~50 ns        |
+| Metric                                                          | 1000 vehicles |
+| --------------------------------------------------------------- | ------------- |
+| `Tracker.tick` linear, with sanity checks and adapter dispatch  | ~0.15 ms      |
+| `Tracker.tick` share of a 60 Hz frame (16.67 ms; ≈2% at 120 Hz) | **~1%**       |
+| `Tracker.ingest` first append                                   | ~0.08 ms      |
+| `Tracker.ingest` slot shift (allocation-free)                   | ~0.15 ms      |
+| `Interpolator.compute` linear (single point)                    | ~50 ns        |
 
-The 60fps tick budget is 16.67 ms. Processing 1000 vehicles in a single tick typically uses **under 1%** of that, so 10× more vehicles (≈10K) is still theoretically smooth. In practice the bottleneck shifts to the adapter and renderer well before the core engine.
+The tick runs once per display frame via requestAnimationFrame, so its budget is the frame interval: 16.67 ms at 60 Hz, 8.33 ms at 120 Hz. Processing 1000 vehicles in a single tick typically uses **well under 1%** of a 60 Hz frame (≈2% at 120 Hz), so 10× more vehicles (≈10K) is still theoretically smooth. In practice the bottleneck shifts to the adapter and renderer well before the core engine.
 
 ## `Tracker.tick` — interpolation + sanity checks + adapter dispatch
 

@@ -63,7 +63,7 @@ export class PositionsService {
 
 ## 4. Run it
 
-If the backend pushes `Position[]` arrays, vehicles will glide on the map smoothly. Even when the WebSocket emits once every 5 seconds, the visual update runs at 60fps.
+If the backend pushes `Position[]` arrays, vehicles will glide on the map smoothly. Even when the WebSocket emits once every 5 seconds, the visual update runs at the display's refresh rate.
 
 ## Custom styles
 

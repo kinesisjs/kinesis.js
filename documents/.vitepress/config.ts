@@ -19,7 +19,7 @@ export default defineConfig({
       {
         property: 'og:description',
         content:
-          'Framework-agnostic vehicle interpolation engine — smooth marker movement at 60fps.',
+          'Framework-agnostic vehicle interpolation engine — smooth marker movement at the display refresh rate.',
       },
     ],
   ],
