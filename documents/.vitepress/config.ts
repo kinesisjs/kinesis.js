@@ -32,7 +32,7 @@ export default defineConfig({
       { text: 'Concepts', link: '/concepts/architecture' },
       { text: 'Performance', link: '/benchmarks' },
       {
-        text: 'v0.1.2',
+        text: 'v0.5.1',
         items: [
           {
             text: 'Migration notes',
