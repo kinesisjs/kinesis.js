@@ -78,11 +78,13 @@ jobs:
       # newest 22.x and which therefore hides exactly that. Two bumps slipped
       # through this way: lint-staged@17 (node >=22.22.1) broke local installs,
       # and maplibre-gl pulls @mapbox/jsonlint-lines-primitives (node >=22),
-      # which had quietly invalidated the old ">=20" claim.
+      # which had quietly invalidated the old ">=20" claim. The floor is the
+      # intersection of every dependency's engines field -- jsdom@29 narrows it
+      # further to ^22.13.0 inside the 22.x line.
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22.0.0
+          node-version: 22.13.0
 
       - name: Install on the declared minimum
         run: pnpm install --frozen-lockfile
