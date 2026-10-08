@@ -4,6 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import * as leaflet from './index';
 
+import pkg from '../package.json';
+
 describe('@kinesisjs/leaflet public API', () => {
   it('exports the adapter and style helpers', () => {
     expect(typeof leaflet.LeafletAdapter).toBe('function');
@@ -12,6 +14,6 @@ describe('@kinesisjs/leaflet public API', () => {
   });
 
   it('exposes a VERSION constant', () => {
-    expect(leaflet.VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(leaflet.VERSION).toBe(pkg.version);
   });
 });

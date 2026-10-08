@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import * as core from './index.js';
 
+import pkg from '../package.json';
+
 describe('@kinesisjs/core', () => {
   it('exports VERSION constant', () => {
-    expect(core.VERSION).toBe('0.1.0');
+    expect(core.VERSION).toBe(pkg.version);
   });
 });

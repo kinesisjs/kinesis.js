@@ -9,6 +9,8 @@ import {
   createVehicleStyle,
 } from './index';
 
+import pkg from '../package.json';
+
 describe('@kinesisjs/maplibre public API', () => {
   it('exports the adapter and style helpers', () => {
     expect(MapLibreAdapter).toBeTypeOf('function');
@@ -23,6 +25,6 @@ describe('@kinesisjs/maplibre public API', () => {
   });
 
   it('exposes a VERSION constant', () => {
-    expect(VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(VERSION).toBe(pkg.version);
   });
 });
