@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import * as ra from './index';
 
+import pkg from '../package.json';
+
 describe('@kinesisjs/route-aware public API', () => {
   it('exports the main classes and helpers', () => {
     expect(typeof ra.OSRMInterpolator).toBe('function');
@@ -11,6 +13,6 @@ describe('@kinesisjs/route-aware public API', () => {
   });
 
   it('exposes a VERSION constant', () => {
-    expect(ra.VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(ra.VERSION).toBe(pkg.version);
   });
 });

@@ -16,4 +16,4 @@ export type {
   SpeedColorBand,
 } from './types';
 
-export const VERSION = '0.1.0' as const;
+export { VERSION } from './version';
