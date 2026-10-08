@@ -57,6 +57,34 @@ jobs:
       - name: Bundle size check
         run: pnpm size
 
+  engines:
+    name: Install on minimum Node
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          run_install: false
+
+      # The repo declares engines.node ">=20", and .npmrc sets engine-strict,
+      # so a dependency whose own engines field demands something newer makes
+      # `pnpm install` fail outright for anyone on the supported floor. The
+      # other jobs run `node-version: 22`, which resolves to the latest 22.x
+      # and hides exactly that. lint-staged@17 (node >=22.22.1) slipped through
+      # this way and broke local installs; this job is the guard.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 20
+
+      - name: Install on the declared minimum
+        run: pnpm install --frozen-lockfile
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest
