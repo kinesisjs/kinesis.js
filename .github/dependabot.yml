@@ -13,6 +13,12 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+        # Only minor/patch are grouped. Majors arrive as individual PRs: a single
+        # group PR mixing TypeScript, Vitest, ESLint and Angular majors can never
+        # be merged as a unit, since each one is its own migration.
+        update-types:
+          - minor
+          - patch
 
   # The workflow actions are SHA-pinned; Dependabot bumps the pins (and their
   # version comments) so the pins never silently rot.

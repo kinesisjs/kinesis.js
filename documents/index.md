@@ -30,8 +30,8 @@ features:
     title: TypeScript-first
     details: Strict typings, dual ESM + CJS build, typed event bus, custom interpolator extensibility.
   - icon: 🌍
-    title: Route-aware roadmap
-    details: A self-hostable OSRM-backed map-matching package is planned for v0.4.
+    title: Route-aware interpolation
+    details: '@kinesisjs/route-aware snaps movement to the road network through a self-hostable OSRM backend — plugged in via the custom interpolator interface.'
 ---
 
 ## Quick start
@@ -99,6 +99,16 @@ Kinesis.js fills that gap narrowly and deeply. The library is honest about [wher
 
 ## Status
 
-**v0.1.2** — current. Real-time interpolation (`renderLagMs`), `ng-packagr` Angular build, lowered adaptive `minPeriodMs` default, and four new directive `@Input`s. See the [migration notes](/guide/migration) if you're coming from 0.1.0.
+Packages are versioned independently. Currently published:
 
-Roadmap detail on [GitHub](https://github.com/kinesisjs/kinesis.js).
+| Package                  | Version |
+| ------------------------ | ------- |
+| `@kinesisjs/core`        | `0.5.1` |
+| `@kinesisjs/openlayers`  | `0.2.6` |
+| `@kinesisjs/leaflet`     | `0.1.3` |
+| `@kinesisjs/angular`     | `0.5.1` |
+| `@kinesisjs/route-aware` | `0.1.4` |
+
+Recent highlights: `smooth` interpolation (Catmull-Rom) and the playout buffer in core 0.5, OSRM road-snapping via `@kinesisjs/route-aware` in 0.4, and the Leaflet adapter in 0.3.
+
+Full history in the [changelog](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md); breaking-change notes for the 0.1.x line in the [migration guide](/guide/migration). Roadmap detail on [GitHub](https://github.com/kinesisjs/kinesis.js).

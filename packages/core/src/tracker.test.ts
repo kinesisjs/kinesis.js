@@ -122,12 +122,23 @@ describe('Tracker.ingest', () => {
 
 describe('Tracker tick (sanity checks)', () => {
   it('on second ingest, tickOnce drives updatePosition through adapter', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1000);
     const adapter = new MockAdapter();
     const t = new Tracker({ adapter, ingestThrottle: 0 });
-    t.ingest([{ id: 'v1', lng: 29, lat: 41, timestamp: Date.now() - 1000 }]);
-    t.ingest([{ id: 'v1', lng: 29.001, lat: 41.001, timestamp: Date.now() }]);
+    t.ingest([{ id: 'v1', lng: 29, lat: 41 }]);
+    vi.setSystemTime(2000);
+    // ~14 m in 1 s. Must stay under the 100 m anomalous-jump floor, otherwise the
+    // distance sanity check routes the tick to the fade fallback and never calls
+    // updatePosition.
+    t.ingest([{ id: 'v1', lng: 29.0001, lat: 41.0001 }]);
+    // Interpolation window is [previous.receivedAt, current.receivedAt] = [1000,
+    // 2000] and renderTime = now - renderLagMs (default 1000), so wall-clock `now`
+    // has to sit in [2000, 3000] for the tick to land inside the window.
+    vi.setSystemTime(2500); // renderTime=1500 -> ratio 0.5, mid-segment
     t.tickOnce();
     expect(adapter.updatePosition).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it('anomalous jump (huge distance) triggers fade fallback via updateOpacity', () => {
