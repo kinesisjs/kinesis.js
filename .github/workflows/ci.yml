@@ -71,16 +71,18 @@ jobs:
         with:
           run_install: false
 
-      # The repo declares engines.node ">=20", and .npmrc sets engine-strict,
-      # so a dependency whose own engines field demands something newer makes
-      # `pnpm install` fail outright for anyone on the supported floor. The
-      # other jobs run `node-version: 22`, which resolves to the latest 22.x
-      # and hides exactly that. lint-staged@17 (node >=22.22.1) slipped through
-      # this way and broke local installs; this job is the guard.
+      # Pinned to the exact floor from engines.node, not a range. .npmrc sets
+      # engine-strict, so a dependency demanding something newer makes
+      # `pnpm install` fail outright for everyone on the supported minimum. The
+      # other jobs run `node-version: 22`, which setup-node resolves to the
+      # newest 22.x and which therefore hides exactly that. Two bumps slipped
+      # through this way: lint-staged@17 (node >=22.22.1) broke local installs,
+      # and maplibre-gl pulls @mapbox/jsonlint-lines-primitives (node >=22),
+      # which had quietly invalidated the old ">=20" claim.
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 20
+          node-version: 22.0.0
 
       - name: Install on the declared minimum
         run: pnpm install --frozen-lockfile
