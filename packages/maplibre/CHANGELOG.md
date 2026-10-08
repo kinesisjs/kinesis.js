@@ -1,5 +1,19 @@
 # @kinesisjs/maplibre
 
+## 0.1.1
+
+### Patch Changes
+
+- [#54](https://github.com/kinesisjs/kinesis.js/pull/54) [`8e0bda7`](https://github.com/kinesisjs/kinesis.js/commit/8e0bda7dc3b32a102ae003abac510be109dc5955) Thanks [@Mu-As](https://github.com/Mu-As)! - Fix the custom-sprite example in the docs.
+
+  It used `await map.loadImage(url)`, which only returns a promise from
+  maplibre-gl v4 onward — in v3 the method is callback-based, and this package's
+  peer range allows `>=3.0.0`, so the example did not hold for every supported
+  version. It now loads the image with `new Image()` + `decode()`, which behaves
+  the same on all of them.
+
+  Documentation only; no change to the adapter.
+
 ## 0.1.0
 
 ### Minor Changes
