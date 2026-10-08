@@ -147,11 +147,7 @@ export interface AdaptiveOptions {
 export type AdaptiveBehavior = 'none' | 'linear' | 'fade' | 'snap';
 
 export type TrackerErrorCode =
-  | 'INVALID_POSITION'
-  | 'ADAPTER_ERROR'
-  | 'INTERPOLATION_ERROR'
-  | 'WORKER_ERROR'
-  | 'INTERNAL_ERROR';
+  'INVALID_POSITION' | 'ADAPTER_ERROR' | 'INTERPOLATION_ERROR' | 'WORKER_ERROR' | 'INTERNAL_ERROR';
 
 export interface TrackerError {
   code: TrackerErrorCode;
