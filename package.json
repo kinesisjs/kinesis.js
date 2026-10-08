@@ -34,7 +34,7 @@
     "size": "node scripts/check-bundle-sizes.mjs",
     "verify": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm size",
     "changeset": "changeset",
-    "changeset:version": "changeset version",
+    "changeset:version": "changeset version && node scripts/sync-package-versions.mjs && prettier --write \"packages/*/src/version.ts\"",
     "changeset:publish": "pnpm build && changeset publish",
     "prepare": "husky"
   },

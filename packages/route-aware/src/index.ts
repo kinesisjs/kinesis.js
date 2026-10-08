@@ -5,4 +5,4 @@ export { cumulativeArcLengths, walkPolyline } from './arc-length';
 
 export type { OSRMInterpolatorOptions, OSRMRouteResponse, Polyline } from './types';
 
-export const VERSION = '0.1.0' as const;
+export { VERSION } from './version';
