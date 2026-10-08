@@ -10,7 +10,7 @@
 | ---------------------------- | --------------------------------- |
 | **Versiyon (core)**          | v0.0.0                            |
 | **Branch**                   | `v0.0.0`                          |
-| **Önceki yayın (baseline)**  | [v0.5.1](./v0.5.1.md)             |
+| **Önceki yayın (baseline)**  | [v0.5.3](./v0.5.3.md)             |
 | **Durum**                    | 🚧 geliştiriliyor · ✅ yayınlandı |
 | **Başlangıç / Yayın tarihi** | YYYY-MM-DD / —                    |
 
@@ -26,7 +26,7 @@
 | @kinesisjs/openlayers  | 0.2.6  | —           |
 | @kinesisjs/leaflet     | 0.1.3  | —           |
 | @kinesisjs/angular     | 0.5.1  | —           |
-| @kinesisjs/route-aware | 0.1.3  | —           |
+| @kinesisjs/route-aware | 0.1.4  | —           |
 
 ## Feature & Modüller
 

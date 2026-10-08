@@ -16,7 +16,7 @@ Kinesis.js follows a three-layer responsibility model. Each layer consumes the l
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 2: Map adapter                                    │
 │  (@kinesisjs/openlayers, @kinesisjs/leaflet,             │
-│   maplibre*, mapbox*, google-maps*)                      │
+│   @kinesisjs/maplibre, mapbox*, google-maps*)            │
 │  ─ Feature lifecycle (create, update, delete)            │
 │  ─ Style application                                     │
 │  ─ Camera and viewport integration                       │
@@ -33,7 +33,7 @@ Kinesis.js follows a three-layer responsibility model. Each layer consumes the l
 └──────────────────────────────────────────────────────────┘
 ```
 
-`*` planned. Shipped today: `@kinesisjs/core`, `@kinesisjs/openlayers`, `@kinesisjs/leaflet`, `@kinesisjs/angular`.
+`*` planned. Shipped today: `@kinesisjs/core`, `@kinesisjs/openlayers`, `@kinesisjs/leaflet`, `@kinesisjs/maplibre`, `@kinesisjs/angular`.
 
 ## Data flow
 
@@ -59,9 +59,11 @@ WebSocket ────► Worker ────► RxJS / Signal    │
                           └────────────┬───────────────┘
                                        │
                           ┌────────────▼───────────────┐
-                          │   Adapter (OL / Leaflet):  │
+                          │   Adapter (OL / Leaflet /  │
+                          │             MapLibre):     │
                           │   feature.setCoords(p)     │
                           │   marker.setLatLng(p)      │
+                          │   source.setData(fleet)    │
                           └────────────────────────────┘
                                        │
                                        ▼

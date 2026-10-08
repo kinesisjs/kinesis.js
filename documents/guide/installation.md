@@ -21,6 +21,12 @@ Leaflet:
 pnpm add @kinesisjs/core @kinesisjs/leaflet leaflet
 ```
 
+MapLibre:
+
+```bash
+pnpm add @kinesisjs/core @kinesisjs/maplibre maplibre-gl
+```
+
 With the Angular wrapper (OpenLayers stack):
 
 ```bash
@@ -41,6 +47,7 @@ These are not bundled — your project supplies the version:
 | ----------------------- | ---------------------------------- | ---------- |
 | `@kinesisjs/openlayers` | `ol`                               | `>=8.0.0`  |
 | `@kinesisjs/leaflet`    | `leaflet`                          | `>=1.7.0`  |
+| `@kinesisjs/maplibre`   | `maplibre-gl`                      | `>=3.0.0`  |
 | `@kinesisjs/angular`    | `@angular/core`, `@angular/common` | `>=17.0.0` |
 | `@kinesisjs/angular`    | `rxjs`                             | `>=7.0.0`  |
 | `@kinesisjs/angular`    | `ol`                               | `>=8.0.0`  |
@@ -96,3 +103,4 @@ pnpm add /path/to/kinesisjs-core-<version>.tgz
 - [First map (Angular)](/guide/first-map-angular)
 - [First map (vanilla TypeScript)](/guide/first-map-vanilla) — OpenLayers
 - [First map (Leaflet)](/guide/first-map-leaflet)
+- [First map (MapLibre)](/guide/first-map-maplibre)

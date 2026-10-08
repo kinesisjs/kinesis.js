@@ -4,7 +4,7 @@ Kinesis.js — TypeScript-first, framework-agnostic vehicle interpolation engine
 pnpm monorepo, **bağımsız sürümlü** (Changesets). Yayındaki paketler:
 
 - `@kinesisjs/core` — framework-agnostic interpolation motoru (adapter/framework kodu sızdırma)
-- `@kinesisjs/openlayers`, `@kinesisjs/leaflet` — harita adaptörleri
+- `@kinesisjs/openlayers`, `@kinesisjs/leaflet`, `@kinesisjs/maplibre` — harita adaptörleri
 - `@kinesisjs/angular` — Angular Signals/RxJS wrapper (build: **ng-packagr**, asla tsup)
 - `@kinesisjs/route-aware` — OSRM road-snap `CustomInterpolator`
 

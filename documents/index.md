@@ -91,6 +91,23 @@ tracker.start();
 tracker.ingest(positions);
 ```
 
+**Vanilla TypeScript (MapLibre GL):**
+
+```ts
+import { Tracker } from '@kinesisjs/core';
+import { MapLibreAdapter, createVehicleStyle } from '@kinesisjs/maplibre';
+
+const tracker = new Tracker({
+  adapter: new MapLibreAdapter(map, {
+    style: createVehicleStyle({ iconSize: 28 }),
+  }),
+  interpolation: 'adaptive',
+});
+
+tracker.start();
+tracker.ingest(positions);
+```
+
 ## Why?
 
 In fleet tracking and real-time location applications, vehicles **jump** on the map between periodic server updates. Existing solutions are either unmaintained, locked to a single map library, or address a different problem (animation along a known polyline).
@@ -106,9 +123,10 @@ Packages are versioned independently. Currently published:
 | `@kinesisjs/core`        | `0.5.1` |
 | `@kinesisjs/openlayers`  | `0.2.6` |
 | `@kinesisjs/leaflet`     | `0.1.3` |
+| `@kinesisjs/maplibre`    | `0.1.0` |
 | `@kinesisjs/angular`     | `0.5.1` |
 | `@kinesisjs/route-aware` | `0.1.4` |
 
-Recent highlights: `smooth` interpolation (Catmull-Rom) and the playout buffer in core 0.5, OSRM road-snapping via `@kinesisjs/route-aware` in 0.4, and the Leaflet adapter in 0.3.
+Recent highlights: the GPU-rendered MapLibre GL adapter in 0.6, `smooth` interpolation (Catmull-Rom) and the playout buffer in core 0.5, OSRM road-snapping via `@kinesisjs/route-aware` in 0.4, and the Leaflet adapter in 0.3.
 
 Full history in the [changelog](https://github.com/kinesisjs/kinesis.js/blob/main/CHANGELOG.md); breaking-change notes for the 0.1.x line in the [migration guide](/guide/migration). Roadmap detail on [GitHub](https://github.com/kinesisjs/kinesis.js).
