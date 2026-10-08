@@ -12,9 +12,7 @@ import type { TrailPoint } from '@kinesisjs/core';
  * The {@link createVehicleStyle} helper produces a heading-aware factory.
  */
 export type VehicleStyleProvider =
-  | Icon
-  | DivIcon
-  | ((vehicle: TrailPoint, vehicleId: string) => Icon | DivIcon);
+  Icon | DivIcon | ((vehicle: TrailPoint, vehicleId: string) => Icon | DivIcon);
 
 export interface LeafletAdapterOptions {
   /** Static icon or per-vehicle icon factory. Defaults to a built-in rotatable marker. */

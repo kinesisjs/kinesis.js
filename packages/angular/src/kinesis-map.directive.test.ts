@@ -126,8 +126,7 @@ describe('KinesisMapDirective', () => {
     fixture.detectChanges();
 
     const directive = fixture.debugElement.children[0]!.references['ref'] as
-      | KinesisMapDirective
-      | undefined;
+      KinesisMapDirective | undefined;
     expect(directive).toBeDefined();
     expect(directive?.getMap()).toBeDefined();
     expect(directive?.getTracker()).toBeInstanceOf(Tracker);
