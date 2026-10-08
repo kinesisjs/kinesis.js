@@ -101,13 +101,19 @@ The default arrow is generated at runtime as an SDF sprite, so there is no sprit
 `icon` is a **sprite id**, not a URL. Register the image on the map first:
 
 ```ts
-const image = await map.loadImage('/bus.png');
-map.addImage('bus', image.data);
+const img = new Image();
+img.src = '/bus.png';
+await img.decode();
+map.addImage('bus', img);
 
 new MapLibreAdapter(map, {
   style: createVehicleStyle({ icon: 'bus', iconScale: 0.5 }),
 });
 ```
+
+Loading the image this way works on every supported MapLibre version. From v4
+onward `map.loadImage(url)` returns a promise and would do the same job; in v3
+it is callback-based, and this package's peer range still allows v3.
 
 Speed-band colouring only tints **SDF** images. Register with `{ sdf: true }` if you want `color` to apply to your own sprite.
 
