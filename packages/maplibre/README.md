@@ -105,13 +105,19 @@ new MapLibreAdapter(map, {
 `icon` is a **sprite id**, not a URL — register the image on the map first:
 
 ```ts
-const image = await map.loadImage('/bus.png');
-map.addImage('bus', image.data);
+const img = new Image();
+img.src = '/bus.png';
+await img.decode();
+map.addImage('bus', img);
 
 new MapLibreAdapter(map, {
   style: createVehicleStyle({ icon: 'bus', iconScale: 0.5 }),
 });
 ```
+
+Loading the image this way works on every supported MapLibre version. From v4
+onward `map.loadImage(url)` returns a promise and would do the same job; in v3
+it is callback-based, and this package's peer range still allows v3.
 
 `icon-color` only tints **SDF** images. A plain raster sprite is drawn as-is and
 the style's `color` is ignored for it — register it with `{ sdf: true }` if you
