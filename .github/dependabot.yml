@@ -30,3 +30,10 @@ updates:
       github-actions:
         patterns:
           - '*'
+    ignore:
+      # The action's major is locked to the Changesets CLI major -- v2 requires
+      # CLI v3. Bumping it alone breaks every release, so it has to move
+      # together with @changesets/cli in a deliberate change, not a group PR.
+      - dependency-name: changesets/action
+        update-types:
+          - version-update:semver-major

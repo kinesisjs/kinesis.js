@@ -87,7 +87,17 @@ jobs:
         run: pnpm build
 
       - name: Create release PR or publish
-        uses: changesets/action@22ccf9aa43179fe9e27dc62e575971d28cce197c # v1
+        # Pinned to v1.9.0 deliberately. The action's major is coupled to the
+        # Changesets CLI major: v2.0.0+ requires CLI v3 and fails outright on
+        # CLI v2 ("Changesets CLI v2 is not supported"), and it also renamed
+        # every input (version -> version-script, publish -> publish-script,
+        # commit -> commit-message, title -> pr-title, createGithubReleases ->
+        # create-github-releases). This repo is on @changesets/cli ^2.31.0, so
+        # moving the action requires upgrading the CLI in the same change.
+        # Dependabot shipped the v2 SHA under a stale "# v1" comment once (#41)
+        # and took the release pipeline down; majors are now ignored for this
+        # action in dependabot.yml.
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           version: pnpm changeset:version
           publish: pnpm changeset:publish
