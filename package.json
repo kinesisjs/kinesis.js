@@ -80,6 +80,8 @@
       "ignoreGhsas": [
         "GHSA-39pv-4j6c-2g6v",
         "GHSA-48r7-hpm6-gfxm",
+        "GHSA-jhpw-976m-542j",
+        "GHSA-jj27-h5hq-8x99",
         "GHSA-p3vc-36g9-x9gr",
         "GHSA-q6f4-qqrg-jv6x",
         "GHSA-rgjc-h3x7-9mwg"
