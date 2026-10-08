@@ -29,6 +29,17 @@ const BUDGETS = [
     limitKB: 2.5,
   },
   {
+    // 3 KB rather than the 2.5 KB the other adapters hold. MapLibre has no DOM
+    // styling path, so unlike Leaflet/OpenLayers this adapter cannot delegate:
+    // it carries two source+layer specs (expression strings are verbatim), the
+    // style-load gate, the per-tick setData coalescing, and it generates its
+    // default arrow as an SDF sprite so consumers need no sprite sheet or fetch.
+    // Tighten back toward 2.5 if the sprite ever moves out of the bundle.
+    name: '@kinesisjs/maplibre (ESM)',
+    path: 'packages/maplibre/dist/index.js',
+    limitKB: 3,
+  },
+  {
     name: '@kinesisjs/route-aware (ESM)',
     path: 'packages/route-aware/dist/index.js',
     limitKB: 2.5,

@@ -60,6 +60,7 @@ export default defineConfig({
             { text: 'First map (Angular)', link: '/guide/first-map-angular' },
             { text: 'First map (Vanilla TS)', link: '/guide/first-map-vanilla' },
             { text: 'First map (Leaflet)', link: '/guide/first-map-leaflet' },
+            { text: 'First map (MapLibre)', link: '/guide/first-map-maplibre' },
           ],
         },
         {

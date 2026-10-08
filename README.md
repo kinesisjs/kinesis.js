@@ -17,10 +17,11 @@ A framework-agnostic interpolation engine for fleet tracking, telematics, ride-h
 | [`@kinesisjs/core`](./packages/core)               | [![npm](https://img.shields.io/npm/v/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)               | [![dl](https://img.shields.io/npm/dm/@kinesisjs/core.svg)](https://www.npmjs.com/package/@kinesisjs/core)               | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/core?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/core)               | Pure-TypeScript interpolation engine and lifecycle |
 | [`@kinesisjs/openlayers`](./packages/openlayers)   | [![npm](https://img.shields.io/npm/v/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers)   | [![dl](https://img.shields.io/npm/dm/@kinesisjs/openlayers.svg)](https://www.npmjs.com/package/@kinesisjs/openlayers)   | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/openlayers?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/openlayers)   | OpenLayers map adapter                             |
 | [`@kinesisjs/leaflet`](./packages/leaflet)         | [![npm](https://img.shields.io/npm/v/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)         | [![dl](https://img.shields.io/npm/dm/@kinesisjs/leaflet.svg)](https://www.npmjs.com/package/@kinesisjs/leaflet)         | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/leaflet?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/leaflet)         | Leaflet map adapter                                |
+| [`@kinesisjs/maplibre`](./packages/maplibre)       | [![npm](https://img.shields.io/npm/v/@kinesisjs/maplibre.svg)](https://www.npmjs.com/package/@kinesisjs/maplibre)       | [![dl](https://img.shields.io/npm/dm/@kinesisjs/maplibre.svg)](https://www.npmjs.com/package/@kinesisjs/maplibre)       | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/maplibre?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/maplibre)       | MapLibre GL map adapter                            |
 | [`@kinesisjs/angular`](./packages/angular)         | [![npm](https://img.shields.io/npm/v/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)         | [![dl](https://img.shields.io/npm/dm/@kinesisjs/angular.svg)](https://www.npmjs.com/package/@kinesisjs/angular)         | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/angular?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/angular)         | Angular 17+ Signals / RxJS wrapper                 |
 | [`@kinesisjs/route-aware`](./packages/route-aware) | [![npm](https://img.shields.io/npm/v/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware) | [![dl](https://img.shields.io/npm/dm/@kinesisjs/route-aware.svg)](https://www.npmjs.com/package/@kinesisjs/route-aware) | [![size](https://img.shields.io/bundlephobia/minzip/@kinesisjs/route-aware?label=min%2Bgzip)](https://bundlephobia.com/package/@kinesisjs/route-aware) | Road-snapping interpolation (OSRM)                 |
 
-All five packages are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) and signed via sigstore — every release is cryptographically traceable to the GitHub Actions workflow that built it.
+All six packages are published with [npm provenance](https://docs.npmjs.com/generating-provenance-statements) and signed via sigstore — every release is cryptographically traceable to the GitHub Actions workflow that built it.
 
 ## Quick start
 
@@ -90,7 +91,7 @@ Run `pnpm test:bench` to reproduce on your hardware.
 ┌──────────────────▼───────────────────────────────────────┐
 │  Layer 2: Map adapter                                    │
 │  (@kinesisjs/openlayers, @kinesisjs/leaflet,             │
-│   maplibre*, mapbox*)                                    │
+│   @kinesisjs/maplibre, mapbox*)                          │
 └──────────────────┬───────────────────────────────────────┘
                    │ uses
 ┌──────────────────▼───────────────────────────────────────┐
@@ -143,7 +144,8 @@ Requirements: Node `>=20`, pnpm `>=9`.
 | v0.3    | Leaflet adapter                                      | ✅ Shipped (`@kinesisjs/leaflet`)     |
 | v0.4    | Route-aware interpolation (OSRM)                     | ✅ Shipped (`@kinesisjs/route-aware`) |
 | v0.5    | `smooth` interpolation (Catmull-Rom), playout buffer | ✅ Shipped (`@kinesisjs/core@0.5`)    |
-| v1.0+   | MapLibre, Mapbox GL, React, Vue, Svelte, and more    | Planned                               |
+| v0.6    | MapLibre GL adapter                                  | ✅ Shipped (`@kinesisjs/maplibre`)    |
+| v1.0+   | Mapbox GL, Google Maps, React, Vue, Svelte, and more | Planned                               |
 
 ## Contributing
 
